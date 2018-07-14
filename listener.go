@@ -5,9 +5,9 @@ package config
 // have changed values.
 type ChangedListener interface {
 
-	// Changed is called when one or more properties in the `Config` has a
+	// Changed is called when one or more properties in the Source has a
 	// changed value.
-	Changed(cfg *Config)
+	Changed(cfg *Config, src *Source)
 }
 
 // ChangedPropListener interface is for receiving notifications
@@ -15,5 +15,5 @@ type ChangedListener interface {
 type ChangedPropListener interface {
 
 	// ChangedProp is called for each property whose value has changed.
-	ChangedProp(cfg *Config, name string)
+	ChangedProp(cfg *Config, src *Source, name string)
 }
