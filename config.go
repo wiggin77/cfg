@@ -80,6 +80,38 @@ func (config *Config) Int(name string, def int) (val int, err error) {
 	return
 }
 
+// Int64 returns the value of the named prop as an `int64`.
+// If the property is not found then the supplied default `def`
+// and `ErrNotFound` are returned.
+//
+// See config.String
+func (config *Config) Int64(name string, def int64) (val int64, err error) {
+	var s string
+	if s, err = config.String(name, ""); err == nil {
+		val, err = strconv.ParseInt(s, 10, 64)
+	}
+	if err != nil {
+		val = def
+	}
+	return
+}
+
+// Float64 returns the value of the named prop as a `float64`.
+// If the property is not found then the supplied default `def`
+// and `ErrNotFound` are returned.
+//
+// See config.String
+func (config *Config) Float64(name string, def float64) (val float64, err error) {
+	var s string
+	if s, err = config.String(name, ""); err == nil {
+		val, err = strconv.ParseFloat(s, 64)
+	}
+	if err != nil {
+		val = def
+	}
+	return
+}
+
 //
 // Types:  String, Int, Int64, Float64, Bool, milliseconds
 //
