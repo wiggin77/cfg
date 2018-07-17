@@ -1,6 +1,8 @@
 package config
 
 import (
+	"math"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -202,123 +204,149 @@ func (l *TestListener) Changed(cfg *Config, src *Source) {
 func (l *TestListener) ChangedProp(cfg *Config, src *Source, name string) {
 }
 
-func TestConfig_String(t *testing.T) {
-	src1 := NewSrcMapFromMap(map[string]string{"prop1": "1"})
-	src2 := NewSrcMapFromMap(map[string]string{"prop2": "2", "prop1": "2"})
-	src3 := NewSrcMapFromMap(map[string]string{"prop3": "3", "prop2": "3", "prop1": "3"})
+const noerror = ""
+
+// tests contains parameters for one test case.
+type test struct {
+	srcLevel        int // 0 means don't add prop to Source
+	propName        string
+	propVal         string
+	defVal          interface{}
+	expectedVal     interface{}
+	expectedErrText string
+}
+
+// numberOfSources determines the highest source number in the array.
+func numberOfSources(tests []test) (num int) {
+	for _, p := range tests {
+		if p.srcLevel > num {
+			num = p.srcLevel
+		}
+	}
+	return
+}
+
+// makeTestConfig creates a `Config` populated with test data.
+func makeTestConfig(tests []test) *Config {
+	num := numberOfSources(tests)
+	srcs := make([]Source, num)
+	for i := range srcs {
+		srcs[i] = NewSrcMap()
+	}
+
+	for _, p := range tests {
+		level := p.srcLevel
+		if level > 0 {
+			src := srcs[level-1].(*SrcMap)
+			src.Put(p.propName, p.propVal)
+		}
+	}
+
 	config := &Config{}
-	config.AppendSource(src1, src2, src3)
-	type args struct {
-		prop string
-		def  string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantVal string
-		wantErr error
-	}{
-		{"Missing prop", args{"blap", "x"}, "x", ErrNotFound},
-		{"Prop1", args{"prop1", "x"}, "1", nil},
-		{"Prop2", args{"prop2", "x"}, "2", nil},
-		{"Prop3", args{"prop3", "x"}, "3", nil},
-		{"Blank prop", args{"", "x"}, "x", ErrNotFound},
-	}
+	config.AppendSource(srcs...)
+	return config
+}
+
+func runTest(tests []test, t *testing.T) {
+	config := makeTestConfig(tests)
+
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotVal, gotErr := config.String(tt.args.prop, tt.args.def)
-			if gotVal != tt.wantVal {
-				t.Errorf("Config.String() gotVal = %v, want %v", gotVal, tt.wantVal)
+		t.Run("", func(t *testing.T) {
+			var gotVal interface{}
+			var gotErr error
+			var testName string
+
+			switch def := tt.defVal.(type) {
+			case string:
+				testName = "Config.String()"
+				gotVal, gotErr = config.String(tt.propName, def)
+			case int:
+				testName = "Config.Int()"
+				gotVal, gotErr = config.Int(tt.propName, def)
+			case int64:
+				testName = "Config.Int64()"
+				gotVal, gotErr = config.Int64(tt.propName, def)
+			case float64:
+				testName = "Config.Float64()"
+				gotVal, gotErr = config.Float64(tt.propName, def)
+			default:
+				t.Errorf("%s no test defined for type %T", testName, def)
+				return
 			}
-			if gotErr != tt.wantErr {
-				t.Errorf("Config.String() gotErr = %v, want %v", gotErr, tt.wantErr)
+
+			if gotErr == nil && tt.expectedErrText != noerror {
+				t.Errorf("%s for prop = %s; gotErr = nil, expected %v", testName, tt.propName, tt.expectedErrText)
+				return
+			}
+
+			if gotErr != nil && tt.expectedErrText == noerror {
+				t.Errorf("%s for prop = %s; gotErr = %v, expected no error", testName, tt.propName, gotErr)
+				return
+			}
+
+			if gotErr != nil && !strings.Contains(gotErr.Error(), tt.expectedErrText) {
+				t.Errorf("%s for prop = %s; gotErr = %v, expected %v", testName, tt.propName, gotErr, tt.expectedErrText)
+				return
+			}
+
+			if gotVal != tt.expectedVal {
+				t.Errorf("%s for prop = %s; [gotType=%T, expType=%T]", testName, tt.propName, gotVal, tt.expectedVal)
+				t.Errorf("%s for prop = %s; gotVal = %v, expected %v", testName, tt.propName, gotVal, tt.expectedVal)
 			}
 		})
 	}
+}
+
+func TestConfig_String(t *testing.T) {
+	tests := []test{
+		// srcLevel, propName, propVal, defVal, expectedVal, expectedErrText
+		{1, "prop1", "1", "x", "1", noerror},
+		{2, "prop2", "2", "x", "2", noerror},
+		{3, "prop3", "3", "x", "3", noerror},
+		{0, "blap", "x", "", "", "not found"},
+		{0, "", "", "x", "x", "not found"},
+	}
+	runTest(tests, t)
 }
 
 func TestConfig_Int(t *testing.T) {
-	src1 := NewSrcMapFromMap(map[string]string{"prop1": "-1", "big": "2147483647"})
-	src2 := NewSrcMapFromMap(map[string]string{"prop2": "2", "prop1": "2", "zero": "0"})
-	src3 := NewSrcMapFromMap(map[string]string{"prop3": "3", "prop2": "3", "prop1": "3"})
-	src3.PutAll(map[string]string{"bad1": "x", "bad2": "33.22", "bad3": "09a88", "blank": ""})
-	src3.PutAll(map[string]string{"too_big": "2147483647000"})
-	config := &Config{}
-	config.AppendSource(src1, src2, src3)
-	type args struct {
-		prop string
-		def  int
+	tests := []test{
+		// srcLevel, propName, propVal, defVal, expectedVal, expectedErrText
+		{0, "missing", "1", -1, -1, "not found"},
+		{1, "prop1", "1", -1, 1, noerror},
+		{1, "zero", "0", -1, 0, noerror},
+		{1, "neg", "-5", -1, -5, noerror},
+		{1, "neg_zero", "-0", -1, 0, noerror},
+		{1, "pos_zero", "+0", -1, 0, noerror},
+		{1, "big", "2147483647", -1, 2147483647, noerror},
+		{3, "min", strconv.Itoa(math.MinInt32), -1, math.MinInt32, noerror},
+		{3, "max", strconv.Itoa(math.MaxInt32), -1, math.MaxInt32, noerror},
+		{3, "overflow", strconv.Itoa(math.MaxInt32 * 2), -1, -1, "out of range"},
+		{3, "bad", "00x55", -1, -1, "invalid syntax"},
+		{3, "bad2", "1.025", -1, -1, "invalid syntax"},
+		{3, "bad3", "0x11", -1, -1, "invalid syntax"},
 	}
-	tests := []struct {
-		name    string
-		args    args
-		wantVal int
-		wantErr string
-	}{
-		{"Missing prop", args{"blap", 77}, 77, "not found"},
-		{"Prop1", args{"prop1", 77}, -1, ""},
-		{"Prop2", args{"prop2", 77}, 2, ""},
-		{"Prop3", args{"prop3", 77}, 3, ""},
-		{"zero", args{"zero", 77}, 0, ""},
-		{"big", args{"big", 77}, 2147483647, ""},
-		{"Blank prop", args{"", 77}, 77, "not found"},
-		{"bad1", args{"bad1", 77}, 77, "invalid syntax"},
-		{"bad2", args{"bad2", 77}, 77, "invalid syntax"},
-		{"bad3", args{"bad3", 77}, 77, "invalid syntax"},
-		{"blank value", args{"blank", 77}, 77, "invalid syntax"},
-		{"too big", args{"too_big", 77}, 77, "value out of range"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotVal, gotErr := config.Int(tt.args.prop, tt.args.def)
-			if gotVal != tt.wantVal {
-				t.Errorf("Config.Int() gotVal = %v, want %v", gotVal, tt.wantVal)
-			}
-			if gotErr != nil && tt.wantErr == "" {
-				t.Errorf("Config.Int() unexpected error = %v", gotErr)
-			}
-			if (gotErr == nil && tt.wantErr != "") || (gotErr != nil && !strings.Contains(gotErr.Error(), tt.wantErr)) {
-				t.Errorf("Config.Int() gotErr = %v, want %v", gotErr, tt.wantErr)
-			}
-		})
-	}
+	runTest(tests, t)
 }
 
 func TestConfig_Int64(t *testing.T) {
-	src1 := NewSrcMapFromMap(map[string]string{"prop1": "-1", "big": "21474836470000"})
-	src2 := NewSrcMapFromMap(map[string]string{"prop2": "2", "prop1": "2", "zero": "0"})
-	src3 := NewSrcMapFromMap(map[string]string{"prop3": "3", "prop2": "3", "prop1": "3"})
-	config := &Config{}
-	config.AppendSource(src1, src2, src3)
-	type args struct {
-		prop string
-		def  int64
+	tests := []test{
+		// srcLevel, propName, propVal, defVal, expectedVal, expectedErrText
+		{0, "missing", "1", int64(-1), int64(-1), "not found"},
+		{1, "prop1", "1", int64(-1), int64(1), noerror},
+		{1, "zero", "0", int64(-1), int64(0), noerror},
+		{1, "neg", "-5", int64(-1), int64(-5), noerror},
+		{1, "neg_zero", "-0", int64(-1), int64(0), noerror},
+		{1, "pos_zero", "+0", int64(-1), int64(0), noerror},
+		{1, "big", "2147483647000", int64(-1), int64(2147483647000), noerror},
+		{3, "min", strconv.Itoa(math.MinInt64), int64(-1), int64(math.MinInt64), noerror},
+		{3, "max", strconv.Itoa(math.MaxInt64), int64(-1), int64(math.MaxInt64), noerror},
+		{3, "overflow", strconv.Itoa(math.MaxInt64) + "0", int64(-1), int64(-1), "out of range"},
+		{3, "bad", "00x55", int64(-1), int64(-1), "invalid syntax"},
+		{3, "bad2", "1.025", int64(-1), int64(-1), "invalid syntax"},
+		{3, "bad3", "0x11", int64(-1), int64(-1), "invalid syntax"},
 	}
-	tests := []struct {
-		name    string
-		args    args
-		wantVal int64
-		wantErr error
-	}{
-		{"Missing prop", args{"blap", 77}, 77, ErrNotFound},
-		{"Prop1", args{"prop1", 77}, -1, nil},
-		{"Prop2", args{"prop2", 77}, 2, nil},
-		{"Prop3", args{"prop3", 77}, 3, nil},
-		{"zero", args{"zero", 77}, 0, nil},
-		{"big", args{"big", 77}, 2147483647 * 10000, nil},
-		{"Blank prop", args{"", 77}, 77, ErrNotFound},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotVal, gotErr := config.Int64(tt.args.prop, tt.args.def)
-			if gotVal != tt.wantVal {
-				t.Errorf("Config.Int64() gotVal = %v, want %v", gotVal, tt.wantVal)
-			}
-			if gotErr != tt.wantErr {
-				t.Errorf("Config.Int64() gotErr = %v, want %v", gotErr, tt.wantErr)
-			}
-		})
-	}
+	runTest(tests, t)
 }
 
 func TestConfig_Float64(t *testing.T) {

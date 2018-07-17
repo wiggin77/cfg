@@ -6,6 +6,9 @@ import (
 	"sync"
 )
 
+// ErrNotFound returned when an operation is attempted on a
+// resource that doesn't exist, such as fetching a non-existing
+// property name.
 var ErrNotFound = errors.New("not found")
 
 // Config provides methods for retrieving property values from one or more
