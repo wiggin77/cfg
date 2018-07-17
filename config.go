@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -23,7 +24,7 @@ type Config struct {
 
 // PrependSource inserts one or more `Sources` at the beginning of
 // the list of sources such that the first source will be the
-// source first checked when resolving a property value.
+// source checked first when resolving a property value.
 func (config *Config) PrependSource(srcs ...Source) {
 	config.mutexSrc.Lock()
 	defer config.mutexSrc.Unlock()
@@ -33,7 +34,7 @@ func (config *Config) PrependSource(srcs ...Source) {
 
 // AppendSource appends one or more `Sources` at the end of
 // the list of sources such that the last source will be the
-// source last checked when resolving a property value.
+// source checked last when resolving a property value.
 func (config *Config) AppendSource(srcs ...Source) {
 	config.mutexSrc.Lock()
 	defer config.mutexSrc.Unlock()
@@ -53,8 +54,10 @@ func (config *Config) String(name string, def string) (val string, err error) {
 	defer config.mutexSrc.RUnlock()
 
 	var ok bool
+	var s string
 	for _, src := range config.srcs {
-		if val, ok = src.GetProp(name); ok {
+		if s, ok = src.GetProp(name); ok {
+			val = strings.TrimSpace(s)
 			err = nil
 			return
 		}
@@ -108,6 +111,32 @@ func (config *Config) Float64(name string, def float64) (val float64, err error)
 	var s string
 	if s, err = config.String(name, ""); err == nil {
 		val, err = strconv.ParseFloat(s, 64)
+	}
+	if err != nil {
+		val = def
+	}
+	return
+}
+
+// Bool returns the value of the named prop as a `bool`.
+// If the property is not found then the supplied default `def`
+// and `ErrNotFound` are returned.
+//
+// Supports (t, true, 1, y, yes) for true, and (f, false, 0, n, no) for false,
+// all case-insensitive.
+//
+// See config.String
+func (config *Config) Bool(name string, def bool) (val bool, err error) {
+	var s string
+	if s, err = config.String(name, ""); err == nil {
+		switch strings.ToLower(s) {
+		case "t", "true", "1", "y", "yes":
+			val = true
+		case "f", "false", "0", "n", "no":
+			val = false
+		default:
+			err = errors.New("invalid syntax")
+		}
 	}
 	if err != nil {
 		val = def

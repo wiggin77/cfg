@@ -269,6 +269,9 @@ func runTest(tests []test, t *testing.T) {
 			case float64:
 				testName = "Config.Float64()"
 				gotVal, gotErr = config.Float64(tt.propName, def)
+			case bool:
+				testName = "Config.Bool()"
+				gotVal, gotErr = config.Bool(tt.propName, def)
 			default:
 				t.Errorf("%s no test defined for type %T", testName, def)
 				return
@@ -350,41 +353,45 @@ func TestConfig_Int64(t *testing.T) {
 }
 
 func TestConfig_Float64(t *testing.T) {
-	src1 := NewSrcMapFromMap(map[string]string{"prop1": "-1", "big": "21474836470000", "pi": "3.14", "neg": "-3.14"})
-	src2 := NewSrcMapFromMap(map[string]string{"prop2": "2", "prop1": "2", "zero": "0", "fl_zero": "0.0"})
-	src3 := NewSrcMapFromMap(map[string]string{"prop3": "3", "prop2": "3", "prop1": "3", "neg_zero": "-0.0"})
-	config := &Config{}
-	config.AppendSource(src1, src2, src3)
-	type args struct {
-		prop string
-		def  float64
+	tests := []test{
+		// srcLevel, propName, propVal, defVal, expectedVal, expectedErrText
+		{0, "missing", "1", float64(-1), float64(-1), "not found"},
+		{1, "prop1", "1", float64(-1), float64(1), noerror},
+		{1, "prop2", "1.025", float64(-1), float64(1.025), noerror},
+		{1, "zero", "0", float64(-1), float64(0), noerror},
+		{1, "neg", "-5.25", float64(-1), float64(-5.25), noerror},
+		{1, "neg_zero", "-0.0", float64(-1), float64(0), noerror},
+		{1, "pos_zero", "+0.0", float64(-1), float64(0), noerror},
+		{1, "big", "2147483647000", float64(-1), float64(2147483647000), noerror},
+		{3, "min", strconv.FormatFloat(math.SmallestNonzeroFloat64, 'f', -1, 64), float64(-1), float64(math.SmallestNonzeroFloat64), noerror},
+		{3, "max", strconv.FormatFloat(math.MaxFloat64, 'f', -1, 64), float64(-1), float64(math.MaxFloat64), noerror},
+		{3, "overflow", strconv.FormatFloat(math.MaxFloat64, 'f', -1, 64) + "0", float64(-1), float64(-1), "out of range"},
+		{3, "bad", "00x55", float64(-1), float64(-1), "invalid syntax"},
+		{3, "bad2", "0x11", float64(-1), float64(-1), "invalid syntax"},
+		{3, "bad3", "0..314", float64(-1), float64(-1), "invalid syntax"},
+		{3, "bad3", "bad", float64(-1), float64(-1), "invalid syntax"},
 	}
-	tests := []struct {
-		name    string
-		args    args
-		wantVal float64
-		wantErr error
-	}{
-		{"Missing prop", args{"blap", 77.7}, 77.7, ErrNotFound},
-		{"Prop1", args{"prop1", 77.7}, -1, nil},
-		{"Prop2", args{"prop2", 77.7}, 2, nil},
-		{"Pi", args{"pi", 77.7}, 3.14, nil},
-		{"Neg", args{"neg", 77.7}, -3.14, nil},
-		{"Float Zero", args{"fl_zero", 77.7}, 0, nil},
-		{"Neg Zero", args{"neg_zero", 77.7}, 0, nil},
-		{"zero", args{"zero", 77.7}, 0, nil},
-		{"big", args{"big", 77.7}, 2147483647 * 10000, nil},
-		{"Blank prop", args{"", 77.7}, 77.7, ErrNotFound},
+	runTest(tests, t)
+}
+
+func TestConfig_Bool(t *testing.T) {
+	tests := []test{
+		// srcLevel, propName, propVal, defVal, expectedVal, expectedErrText
+		{0, "missing", "1", false, false, "not found"},
+		{1, "prop1", " 1 ", false, true, noerror},
+		{1, "prop2", " T ", false, true, noerror},
+		{1, "prop3", " TRUE ", false, true, noerror},
+		{1, "prop4", " Y ", false, true, noerror},
+		{1, "prop5", " YES ", false, true, noerror},
+		{1, "prop10", "\t0", true, false, noerror},
+		{1, "prop11", "F", true, false, noerror},
+		{1, "prop12", "false", true, false, noerror},
+		{1, "prop13", "N", true, false, noerror},
+		{1, "prop14", "NO", true, false, noerror},
+		{3, "bad", "00x55", false, false, "invalid syntax"},
+		{3, "bad2", "-F", false, false, "invalid syntax"},
+		{3, "bad3", "", true, true, "invalid syntax"},
+		{3, "bad3", "TRUE DAT", false, false, "invalid syntax"},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotVal, gotErr := config.Float64(tt.args.prop, tt.args.def)
-			if gotVal != tt.wantVal {
-				t.Errorf("Config.Float64() gotVal = %v, want %v", gotVal, tt.wantVal)
-			}
-			if gotErr != tt.wantErr {
-				t.Errorf("Config.Float64() gotErr = %v, want %v", gotErr, tt.wantErr)
-			}
-		})
-	}
+	runTest(tests, t)
 }
