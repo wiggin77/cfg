@@ -2,6 +2,7 @@ package time
 
 import (
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -58,7 +59,12 @@ func ParseMilliseconds(str string) (int64, error) {
 		return 0, err
 	}
 
-	ms := int64(float64(msPerUnit) * fDigits) // TODO:  check for overflow (currently just wraps)
+	// Check for overflow.
+	fms := float64(msPerUnit) * fDigits
+	if fms > math.MaxInt64 || fms < math.MinInt64 {
+		return 0, fmt.Errorf("out of range - '%s' overflows", s)
+	}
+	ms := int64(fms)
 	return ms, nil
 }
 

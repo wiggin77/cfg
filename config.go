@@ -22,6 +22,7 @@ type Config struct {
 	srcs           []Source
 	chgListeners   []ChangedListener
 	propListeners  []ChangedPropListener
+	once           sync.Once
 }
 
 // PrependSource inserts one or more `Sources` at the beginning of
@@ -30,6 +31,8 @@ type Config struct {
 func (config *Config) PrependSource(srcs ...Source) {
 	config.mutexSrc.Lock()
 	defer config.mutexSrc.Unlock()
+
+	config.once.Do(func() { config.monitor() })
 
 	config.srcs = append(srcs, config.srcs...)
 }
@@ -40,6 +43,8 @@ func (config *Config) PrependSource(srcs ...Source) {
 func (config *Config) AppendSource(srcs ...Source) {
 	config.mutexSrc.Lock()
 	defer config.mutexSrc.Unlock()
+
+	config.once.Do(func() { config.monitor() })
 
 	config.srcs = append(config.srcs, srcs...)
 }
@@ -167,10 +172,6 @@ func (config *Config) Millis(name string, def int64) (val int64, err error) {
 	return
 }
 
-//
-// Types:  String, Int, Int64, Float64, Bool, milliseconds
-//
-
 // AddChangedListener adds a listener that will receive notifications
 // whenever one or more property values change within the config.
 func (config *Config) AddChangedListener(l ChangedListener) {
@@ -227,4 +228,9 @@ func (config *Config) RemoveChangedPropListener(l ChangedPropListener) error {
 	}
 	config.propListeners = dest
 	return err
+}
+
+// monitor periodically checks each source for changes.
+func (config *Config) monitor() {
+
 }
