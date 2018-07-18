@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/wiggin77/config/time"
 )
 
 func TestConfig_PrependSource(t *testing.T) {
@@ -206,6 +208,8 @@ func (l *TestListener) ChangedProp(cfg *Config, src *Source, name string) {
 
 const noerror = ""
 
+type millis int64
+
 // tests contains parameters for one test case.
 type test struct {
 	srcLevel        int // 0 means don't add prop to Source
@@ -272,6 +276,9 @@ func runTest(tests []test, t *testing.T) {
 			case bool:
 				testName = "Config.Bool()"
 				gotVal, gotErr = config.Bool(tt.propName, def)
+			case millis:
+				testName = "Config.Millis()"
+				gotVal, gotErr = config.Millis(tt.propName, int64(def))
 			default:
 				t.Errorf("%s no test defined for type %T", testName, def)
 				return
@@ -392,6 +399,38 @@ func TestConfig_Bool(t *testing.T) {
 		{3, "bad2", "-F", false, false, "invalid syntax"},
 		{3, "bad3", "", true, true, "invalid syntax"},
 		{3, "bad3", "TRUE DAT", false, false, "invalid syntax"},
+	}
+	runTest(tests, t)
+}
+
+func TestConfig_Millis(t *testing.T) {
+	tests := []test{
+		// srcLevel, propName, propVal, defVal, expectedVal, expectedErrText
+		{0, "missing", "1", millis(-1), int64(-1), "not found"},
+
+		// All supported units of measure tested in "github.com/wiggin77/config/time"
+		{1, "none", "1", millis(-1), int64(1), noerror},
+		{1, "ms", "1ms", millis(-1), int64(1), noerror},
+		{1, "sec", "1sec", millis(-1), time.MillisPerSecond, noerror},
+		{1, "min", "1min", millis(-1), time.MillisPerMinute, noerror},
+		{1, "hour", "1hour", millis(-1), time.MillisPerHour, noerror},
+		{1, "day", "1day", millis(-1), time.MillisPerDay, noerror},
+		{1, "week", "1week", millis(-1), time.MillisPerWeek, noerror},
+		{1, "year", "1year", millis(-1), time.MillisPerYear, noerror},
+
+		{3, "fraction1", "1.025", millis(-1), int64(1), noerror},
+		{3, "fraction2", "1.5 minutes", millis(-1), int64(90000), noerror},
+
+		{1, "zero", "0", millis(-1), int64(0), noerror},
+		{1, "neg", "-5", millis(-1), int64(-5), noerror},
+		{1, "neg_zero", "-0", millis(-1), int64(0), noerror},
+		{1, "pos_zero", "+0", millis(-1), int64(0), noerror},
+		{1, "big", "400 years", millis(-1), time.MillisPerYear * 400, noerror},
+		{3, "overflow", "400000000 years", millis(-1), int64(-1), "out of range"},
+		{3, "bad1", "00x55", millis(-1), int64(-1), "invalid syntax"},
+		{3, "bad2", "1..025 days", millis(-1), int64(-1), "invalid syntax"},
+		{3, "bad3", "0x11 week", millis(-1), int64(-1), "invalid syntax"},
+		{3, "bad4", "garbage", millis(-1), int64(-1), "invalid syntax"},
 	}
 	runTest(tests, t)
 }

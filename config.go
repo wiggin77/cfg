@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/wiggin77/config/time"
 )
 
 // ErrNotFound returned when an operation is attempted on a
@@ -137,6 +139,27 @@ func (config *Config) Bool(name string, def bool) (val bool, err error) {
 		default:
 			err = errors.New("invalid syntax")
 		}
+	}
+	if err != nil {
+		val = def
+	}
+	return
+}
+
+// Millis returns the value of the named prop as an `int64`, representing
+// a number of milliseconds.
+//
+// Units of measure are supported: ms, sec, min, hour, day, week, year.
+// See config.UnitsToMillis for a complete list of units supported.
+//
+// If the property is not found then the supplied default `def`
+// and `ErrNotFound` are returned.
+//
+// See config.String
+func (config *Config) Millis(name string, def int64) (val int64, err error) {
+	var s string
+	if s, err = config.String(name, ""); err == nil {
+		val, err = time.ParseMilliseconds(s)
 	}
 	if err != nil {
 		val = def

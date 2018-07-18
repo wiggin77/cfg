@@ -1,6 +1,11 @@
-package config
+package time
 
-import "errors"
+import (
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
+)
 
 // MillisPerSecond is the number of millseconds per second.
 const MillisPerSecond int64 = 1000
@@ -29,10 +34,32 @@ const MillisPerYear int64 = MillisPerDay*365 + int64((float64(MillisPerDay) * 0.
 // * "1 minute" returns 60000
 // * "1 hour" returns 3600000
 //
-// See config.unitsToMillis for a list of supported units of measure.
+// See config.UnitsToMillis for a list of supported units of measure.
 func ParseMilliseconds(str string) (int64, error) {
-	// TODO
-	return 0, errors.New("not implemented")
+	s := strings.TrimSpace(str)
+	reg := regexp.MustCompile("([0-9\\.\\-+]*)(.*)")
+	matches := reg.FindStringSubmatch(s)
+	if matches == nil || len(matches) < 1 || matches[1] == "" {
+		return 0, fmt.Errorf("invalid syntax - '%s'", s)
+	}
+	digits := matches[1]
+	units := "ms"
+	if len(matches) > 1 && matches[2] != "" {
+		units = matches[2]
+	}
+
+	fDigits, err := strconv.ParseFloat(digits, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	msPerUnit, err := UnitsToMillis(units)
+	if err != nil {
+		return 0, err
+	}
+
+	ms := int64(float64(msPerUnit) * fDigits) // TODO:  check for overflow (currently just wraps)
+	return ms, nil
 }
 
 // UnitsToMillis returns the number of milliseconds represented by the specified unit of measure.
@@ -49,7 +76,27 @@ func ParseMilliseconds(str string) (int64, error) {
 // * "hours", "h", "hour"
 // * "days", "d", "day"
 // * "weeks", "w", "week"
-func UnitsToMillis(unit string) (int64, error) {
-	// TODO
-	return 0, errors.New("not implemented")
+// * "years", "y", "year"
+func UnitsToMillis(units string) (ms int64, err error) {
+	u := strings.TrimSpace(units)
+	u = strings.ToLower(u)
+	switch u {
+	case "milliseconds", "millisecond", "millis", "ms":
+		ms = 1
+	case "seconds", "second", "sec", "s":
+		ms = MillisPerSecond
+	case "minutes", "minute", "mins", "min", "m":
+		ms = MillisPerMinute
+	case "hours", "hour", "h":
+		ms = MillisPerHour
+	case "days", "day", "d":
+		ms = MillisPerDay
+	case "weeks", "week", "w":
+		ms = MillisPerWeek
+	case "years", "year", "y":
+		ms = MillisPerYear
+	default:
+		err = fmt.Errorf("invalid syntax - '%s' not a supported unit of measure", u)
+	}
+	return
 }
