@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/wiggin77/config/time"
+	timeutil "github.com/wiggin77/config/time"
 )
 
 // ErrNotFound returned when an operation is attempted on a
@@ -35,6 +35,7 @@ func (config *Config) PrependSource(srcs ...Source) {
 	config.once.Do(func() { config.monitor() })
 
 	config.srcs = append(srcs, config.srcs...)
+
 }
 
 // AppendSource appends one or more `Sources` at the end of
@@ -164,7 +165,7 @@ func (config *Config) Bool(name string, def bool) (val bool, err error) {
 func (config *Config) Millis(name string, def int64) (val int64, err error) {
 	var s string
 	if s, err = config.String(name, ""); err == nil {
-		val, err = time.ParseMilliseconds(s)
+		val, err = timeutil.ParseMilliseconds(s)
 	}
 	if err != nil {
 		val = def
