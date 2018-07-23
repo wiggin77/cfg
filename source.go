@@ -23,7 +23,12 @@ type SourceMonitored interface {
 	// should be returned to ensure reload events are not generated.
 	GetLastModified() time.Time
 
-	// GetMonitorFreq returns the frequency in milliseconds between
+	// GetMonitorFreq returns the frequency as a `time.Duration` between
 	// checks for changes to this config source.
-	GetMonitorFreq() int64
+	//
+	// Returning zero (or less) will temporarily suspend calls to `GetLastModified`
+	// and `GetMonitorFreq` will be called every 10 seconds until resumed, after which
+	// `GetMontitorFreq` will be called at a frequency roughly equal to the `time.Duration`
+	// returned.
+	GetMonitorFreq() time.Duration
 }

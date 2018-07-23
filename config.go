@@ -2,9 +2,11 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	timeutil "github.com/wiggin77/config/time"
 )
@@ -21,8 +23,7 @@ type Config struct {
 	mutexListeners sync.RWMutex
 	srcs           []Source
 	chgListeners   []ChangedListener
-	propListeners  []ChangedPropListener
-	once           sync.Once
+	shutdown       chan interface{}
 }
 
 // PrependSource inserts one or more `Sources` at the beginning of
@@ -32,10 +33,16 @@ func (config *Config) PrependSource(srcs ...Source) {
 	config.mutexSrc.Lock()
 	defer config.mutexSrc.Unlock()
 
-	config.once.Do(func() { config.monitor() })
-
+	if config.shutdown == nil {
+		config.shutdown = make(chan interface{})
+	}
 	config.srcs = append(srcs, config.srcs...)
 
+	for _, src := range srcs {
+		if sm, ok := src.(SourceMonitored); ok {
+			config.monitor(sm)
+		}
+	}
 }
 
 // AppendSource appends one or more `Sources` at the end of
@@ -45,9 +52,16 @@ func (config *Config) AppendSource(srcs ...Source) {
 	config.mutexSrc.Lock()
 	defer config.mutexSrc.Unlock()
 
-	config.once.Do(func() { config.monitor() })
-
+	if config.shutdown == nil {
+		config.shutdown = make(chan interface{})
+	}
 	config.srcs = append(config.srcs, srcs...)
+
+	for _, src := range srcs {
+		if sm, ok := src.(SourceMonitored); ok {
+			config.monitor(sm)
+		}
+	}
 }
 
 // String returns the value of the named prop as a string.
@@ -152,8 +166,8 @@ func (config *Config) Bool(name string, def bool) (val bool, err error) {
 	return
 }
 
-// Millis returns the value of the named prop as an `int64`, representing
-// a number of milliseconds.
+// Duration returns the value of the named prop as a `time.Duration`, representing
+// a span of time.
 //
 // Units of measure are supported: ms, sec, min, hour, day, week, year.
 // See config.UnitsToMillis for a complete list of units supported.
@@ -162,10 +176,12 @@ func (config *Config) Bool(name string, def bool) (val bool, err error) {
 // and `ErrNotFound` are returned.
 //
 // See config.String
-func (config *Config) Millis(name string, def int64) (val int64, err error) {
+func (config *Config) Duration(name string, def time.Duration) (val time.Duration, err error) {
 	var s string
 	if s, err = config.String(name, ""); err == nil {
-		val, err = timeutil.ParseMilliseconds(s)
+		var ms int64
+		ms, err = timeutil.ParseMilliseconds(s)
+		val = time.Duration(ms) * time.Millisecond
 	}
 	if err != nil {
 		val = def
@@ -202,36 +218,67 @@ func (config *Config) RemoveChangedListener(l ChangedListener) error {
 	return err
 }
 
-// AddChangedPropListener adds a listener that will receive notifications
-// whenever a property value changes.
-func (config *Config) AddChangedPropListener(l ChangedPropListener) {
-	config.mutexListeners.Lock()
-	defer config.mutexListeners.Unlock()
-
-	config.propListeners = append(config.propListeners, l)
-}
-
-// RemoveChangedPropListener removes all instances of a ChangedPropListener.
-// Returns `ErrNotFound` if the listener was not present.
-func (config *Config) RemoveChangedPropListener(l ChangedPropListener) error {
-	config.mutexListeners.Lock()
-	defer config.mutexListeners.Unlock()
-
-	dest := make([]ChangedPropListener, 0, len(config.propListeners))
-	err := ErrNotFound
-
-	for _, s := range config.propListeners {
-		if s != l {
-			dest = append(dest, s)
-		} else {
-			err = nil
-		}
+// Shutdown can be called to stop monitoring of all config sources.
+func (config *Config) Shutdown() {
+	config.mutexSrc.RLock()
+	defer config.mutexSrc.RUnlock()
+	if config.shutdown != nil {
+		close(config.shutdown)
 	}
-	config.propListeners = dest
-	return err
 }
 
-// monitor periodically checks each source for changes.
-func (config *Config) monitor() {
+// onSourceChanged is called whenever a config source properties
+// have changed.
+func (config *Config) onSourceChanged(src SourceMonitored) {
+	defer func() {
+		if p := recover(); p != nil {
+			fmt.Println(p)
+		}
+	}()
+	config.mutexListeners.RLock()
+	defer config.mutexListeners.RUnlock()
+	for _, l := range config.chgListeners {
+		l.Changed(config, src)
+	}
+}
 
+// monitor periodically checks a config source for changes.
+func (config *Config) monitor(src SourceMonitored) {
+	go func(sm SourceMonitored, shutdown <-chan interface{}) {
+		paused := false
+		last := time.Time{}
+		freq := src.GetMonitorFreq()
+		if freq <= 0 {
+			paused = true
+			freq = 10
+			last = src.GetLastModified()
+		}
+		timer := time.NewTimer(freq)
+		for {
+			select {
+			case <-timer.C:
+				if !paused {
+					latest := src.GetLastModified()
+					if last.Before(latest) {
+						last = latest
+						config.onSourceChanged(sm)
+					}
+				}
+				freq = src.GetMonitorFreq()
+				if freq <= 0 {
+					paused = true
+					freq = 10
+				} else {
+					paused = false
+				}
+				timer.Reset(freq)
+			case <-shutdown:
+				// stop the timer and exit
+				if !timer.Stop() {
+					<-timer.C
+				}
+				return
+			}
+		}
+	}(src, config.shutdown)
 }

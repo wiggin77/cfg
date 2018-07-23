@@ -5,8 +5,9 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
-	"github.com/wiggin77/config/time"
+	timeutil "github.com/wiggin77/config/time"
 )
 
 func TestConfig_PrependSource(t *testing.T) {
@@ -18,6 +19,7 @@ func TestConfig_PrependSource(t *testing.T) {
 	src3 := NewSrcMapFromMap(map3)
 
 	cfg := &Config{}
+	defer cfg.Shutdown()
 
 	// Prepend one to empty config.
 	cfg.PrependSource(src1)
@@ -71,6 +73,7 @@ func TestConfig_AppendSource(t *testing.T) {
 	src3 := NewSrcMapFromMap(map3)
 
 	cfg := &Config{}
+	defer cfg.Shutdown()
 
 	// Append to empty config.
 	cfg.AppendSource(src1)
@@ -119,6 +122,7 @@ func TestConfig_AddRemoveChangedListener(t *testing.T) {
 	map1 := map[string]string{"prop1": "1"}
 	src1 := NewSrcMapFromMap(map1)
 	cfg := &Config{}
+	defer cfg.Shutdown()
 	cfg.AppendSource(src1)
 
 	tl1 := &TestListener{}
@@ -155,60 +159,15 @@ func TestConfig_AddRemoveChangedListener(t *testing.T) {
 	}
 }
 
-func TestConfig_AddRemoveChangedPropListener(t *testing.T) {
-	map1 := map[string]string{"prop1": "1"}
-	src1 := NewSrcMapFromMap(map1)
-	cfg := &Config{}
-	cfg.AppendSource(src1)
-
-	tl1 := &TestListener{}
-	tl2 := &TestListener{}
-	tl3 := &TestListener{}
-
-	// Test Add
-	cfg.AddChangedPropListener(tl1)
-	if len(cfg.propListeners) != 1 {
-		t.Errorf("AddChangedPropListener; expected len=1, got len=%d", len(cfg.propListeners))
-	}
-	cfg.AddChangedPropListener(tl2)
-	if len(cfg.propListeners) != 2 {
-		t.Errorf("AddChangedPropListener; expected len=2, got len=%d", len(cfg.propListeners))
-	}
-	cfg.AddChangedPropListener(tl3)
-	cfg.AddChangedPropListener(tl1)
-	if len(cfg.propListeners) != 4 {
-		t.Errorf("AddChangedPropListener; expected len=4, got len=%d", len(cfg.propListeners))
-	}
-
-	// Test remove
-	cfg.RemoveChangedPropListener(tl1)
-	if len(cfg.propListeners) != 2 {
-		t.Errorf("RemoveChangedPropListener; expected len=2, got len=%d", len(cfg.propListeners))
-	}
-	cfg.RemoveChangedPropListener(tl2)
-	if len(cfg.propListeners) != 1 {
-		t.Errorf("RemoveChangedPropListener; expected len=1, got len=%d", len(cfg.propListeners))
-	}
-	cfg.RemoveChangedPropListener(tl3)
-	if len(cfg.propListeners) != 0 {
-		t.Errorf("RemoveChangedPropListener; expected len=0, got len=%d", len(cfg.propListeners))
-	}
-}
-
 // ChangeListener and ChangedPropListener
 type TestListener struct {
 	_ [1]byte // cannot be empty struct
 }
 
-func (l *TestListener) Changed(cfg *Config, src *Source) {
-}
-
-func (l *TestListener) ChangedProp(cfg *Config, src *Source, name string) {
+func (l *TestListener) Changed(cfg *Config, src SourceMonitored) {
 }
 
 const noerror = ""
-
-type millis int64
 
 // tests contains parameters for one test case.
 type test struct {
@@ -253,6 +212,7 @@ func makeTestConfig(tests []test) *Config {
 
 func runTest(tests []test, t *testing.T) {
 	config := makeTestConfig(tests)
+	defer config.Shutdown()
 
 	for _, tt := range tests {
 		t.Run("", func(t *testing.T) {
@@ -276,9 +236,9 @@ func runTest(tests []test, t *testing.T) {
 			case bool:
 				testName = "Config.Bool()"
 				gotVal, gotErr = config.Bool(tt.propName, def)
-			case millis:
-				testName = "Config.Millis()"
-				gotVal, gotErr = config.Millis(tt.propName, int64(def))
+			case time.Duration:
+				testName = "Config.Duration()"
+				gotVal, gotErr = config.Duration(tt.propName, time.Duration(def))
 			default:
 				t.Errorf("%s no test defined for type %T", testName, def)
 				return
@@ -403,34 +363,38 @@ func TestConfig_Bool(t *testing.T) {
 	runTest(tests, t)
 }
 
-func TestConfig_Millis(t *testing.T) {
+func TestConfig_Duration(t *testing.T) {
+	// convert milliseconds to Duration
+	ms2dur := func(ms int64) time.Duration {
+		return time.Duration(ms) * time.Millisecond
+	}
 	tests := []test{
 		// srcLevel, propName, propVal, defVal, expectedVal, expectedErrText
-		{0, "missing", "1", millis(-1), int64(-1), "not found"},
+		{0, "missing", "1", time.Duration(-1), time.Duration(-1), "not found"},
 
 		// All supported units of measure tested in "github.com/wiggin77/config/time"
-		{1, "none", "1", millis(-1), int64(1), noerror},
-		{1, "ms", "1ms", millis(-1), int64(1), noerror},
-		{1, "sec", "1sec", millis(-1), time.MillisPerSecond, noerror},
-		{1, "min", "1min", millis(-1), time.MillisPerMinute, noerror},
-		{1, "hour", "1hour", millis(-1), time.MillisPerHour, noerror},
-		{1, "day", "1day", millis(-1), time.MillisPerDay, noerror},
-		{1, "week", "1week", millis(-1), time.MillisPerWeek, noerror},
-		{1, "year", "1year", millis(-1), time.MillisPerYear, noerror},
+		{1, "none", "1", ms2dur(-1), ms2dur(1), noerror},
+		{1, "ms", "1ms", ms2dur(-1), ms2dur(1), noerror},
+		{1, "sec", "1sec", ms2dur(-1), ms2dur(timeutil.MillisPerSecond), noerror},
+		{1, "min", "1min", ms2dur(-1), ms2dur(timeutil.MillisPerMinute), noerror},
+		{1, "hour", "1hour", ms2dur(-1), ms2dur(timeutil.MillisPerHour), noerror},
+		{1, "day", "1day", ms2dur(-1), ms2dur(timeutil.MillisPerDay), noerror},
+		{1, "week", "1week", ms2dur(-1), ms2dur(timeutil.MillisPerWeek), noerror},
+		{1, "year", "1year", ms2dur(-1), ms2dur(timeutil.MillisPerYear), noerror},
 
-		{3, "fraction1", "1.025", millis(-1), int64(1), noerror},
-		{3, "fraction2", "1.5 minutes", millis(-1), int64(90000), noerror},
+		{3, "fraction1", "1.025", ms2dur(-1), ms2dur(1), noerror},
+		{3, "fraction2", "1.5 minutes", ms2dur(-1), ms2dur(90000), noerror},
 
-		{1, "zero", "0", millis(-1), int64(0), noerror},
-		{1, "neg", "-5", millis(-1), int64(-5), noerror},
-		{1, "neg_zero", "-0", millis(-1), int64(0), noerror},
-		{1, "pos_zero", "+0", millis(-1), int64(0), noerror},
-		{1, "big", "400 years", millis(-1), time.MillisPerYear * 400, noerror},
-		{3, "overflow", "400000000 years", millis(-1), int64(-1), "out of range"},
-		{3, "bad1", "00x55", millis(-1), int64(-1), "invalid syntax"},
-		{3, "bad2", "1..025 days", millis(-1), int64(-1), "invalid syntax"},
-		{3, "bad3", "0x11 week", millis(-1), int64(-1), "invalid syntax"},
-		{3, "bad4", "garbage", millis(-1), int64(-1), "invalid syntax"},
+		{1, "zero", "0", ms2dur(-1), ms2dur(0), noerror},
+		{1, "neg", "-5", ms2dur(-1), ms2dur(-5), noerror},
+		{1, "neg_zero", "-0", ms2dur(-1), ms2dur(0), noerror},
+		{1, "pos_zero", "+0", ms2dur(-1), ms2dur(0), noerror},
+		{1, "big", "400 years", ms2dur(-1), ms2dur(timeutil.MillisPerYear * 400), noerror},
+		{3, "overflow", "400000000 years", ms2dur(-1), ms2dur(-1), "out of range"},
+		{3, "bad1", "00x55", ms2dur(-1), ms2dur(-1), "invalid syntax"},
+		{3, "bad2", "1..025 days", ms2dur(-1), ms2dur(-1), "invalid syntax"},
+		{3, "bad3", "0x11 week", ms2dur(-1), ms2dur(-1), "invalid syntax"},
+		{3, "bad4", "garbage", ms2dur(-1), ms2dur(-1), "invalid syntax"},
 	}
 	runTest(tests, t)
 }

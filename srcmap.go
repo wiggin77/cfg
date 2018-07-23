@@ -10,11 +10,16 @@ type SrcMap struct {
 	mutex sync.Mutex
 	m     map[string]string
 	lm    time.Time
+	freq  time.Duration
 }
 
 // NewSrcMap creates an empty `SrcMap`.
 func NewSrcMap() *SrcMap {
-	return &SrcMap{m: make(map[string]string), lm: time.Now()}
+	sm := &SrcMap{}
+	sm.m = make(map[string]string)
+	sm.lm = time.Now()
+	sm.freq = time.Minute
+	return sm
 }
 
 // NewSrcMapFromMap creates a `SrcMap` containing a copy of the
@@ -62,4 +67,21 @@ func (sm *SrcMap) GetLastModified() (last time.Time) {
 	last = sm.lm
 	sm.mutex.Unlock()
 	return
+}
+
+// GetMonitorFreq returns the frequency as a `time.Duration` between
+// checks for changes to this config source. Defaults to 1 minute
+// unless changed with `GetMonitorFreq`.
+func (sm *SrcMap) GetMonitorFreq() (freq time.Duration) {
+	sm.mutex.Lock()
+	freq = sm.freq
+	sm.mutex.Unlock()
+	return
+}
+
+// SetMonitorFreq sets the frequency between checks for changes to this config source.
+func (sm *SrcMap) SetMonitorFreq(freq time.Duration) {
+	sm.mutex.Lock()
+	sm.freq = freq
+	sm.mutex.Unlock()
 }
