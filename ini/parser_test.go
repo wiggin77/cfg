@@ -35,26 +35,25 @@ func Test_parseSection(t *testing.T) {
 		str string
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    string
-		wantErr bool
+		name   string
+		args   args
+		want   string
+		wantOk bool
 	}{
-		// TODO: Add test cases.
-		{"1", args{"[sec1]"}, "sec1", false},
-		{"2", args{"  []  "}, "", false},
-		{"3", args{" [   ]  "}, "", false},
-		{"4", args{"[  sec1  ]"}, "sec1", false},
-		{"5", args{"[sec1"}, "", true},
-		{"6", args{"sec1]"}, "", true},
-		{"7", args{"blap"}, "", true},
-		{"8", args{""}, "", true},
+		{"1", args{"[sec1]"}, "sec1", true},
+		{"2", args{"  []  "}, "", true},
+		{"3", args{" [   ]  "}, "", true},
+		{"4", args{"[  sec1  ]"}, "sec1", true},
+		{"5", args{"[sec1"}, "", false},
+		{"6", args{"sec1]"}, "", false},
+		{"7", args{"blap"}, "", false},
+		{"8", args{""}, "", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseSection(tt.args.str)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("parseSection() error = %v, wantErr %v", err, tt.wantErr)
+			got, gotOk := parseSection(tt.args.str)
+			if gotOk != tt.wantOk {
+				t.Errorf("parseSection() ok = %v, wantOk %v", gotOk, tt.wantOk)
 				return
 			}
 			if got != tt.want {
@@ -98,6 +97,41 @@ func Test_parseProp(t *testing.T) {
 			}
 			if gotVal != tt.wantVal {
 				t.Errorf("parseProp() gotVal = %v, want %v", gotVal, tt.wantVal)
+			}
+		})
+	}
+}
+
+func Test_getSections(t *testing.T) {
+	type args struct {
+		str string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    map[string]*Section
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+		{"1", args{"\nprop1=1\n"}, map[string]*Section{"": &Section{name: "", props: map[string]string{"prop1": "1"}}}, false},
+		{"2", args{"[sec1]\nprop1=1\n"}, map[string]*Section{"sec1": &Section{name: "sec1", props: map[string]string{"prop1": "1"}}}, false},
+		{"3", args{""}, map[string]*Section{}, false},
+		{"4", args{"\t  \n"}, map[string]*Section{}, false},
+		{"5", args{"\nprop1=1\n[sec1]\n#comment\n  prop2 = 2"}, map[string]*Section{
+			"":     &Section{name: "", props: map[string]string{"prop1": "1"}},
+			"sec1": &Section{name: "sec1", props: map[string]string{"prop2": "2"}},
+		}, false},
+		{"6", args{"\tblap!\n"}, map[string]*Section{}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := getSections(tt.args.str)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getSections() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("getSections() = %v, want %v", got, tt.want)
 			}
 		})
 	}

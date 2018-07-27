@@ -15,10 +15,10 @@ type Section struct {
 	mtx   sync.RWMutex
 }
 
-func newSection(name string, props map[string]string) *Section {
+func newSection(name string) *Section {
 	sec := &Section{}
 	sec.name = name
-	sec.props = props
+	sec.props = make(map[string]string)
 	return sec
 }
 
@@ -50,6 +50,15 @@ func (sec *Section) setProp(key string, val string) {
 	sec.mtx.Lock()
 	sec.props[key] = val
 	sec.mtx.Unlock()
+}
+
+// hasKeys returns true if there are one or more properties in
+// this section.
+func (sec *Section) hasKeys() (b bool) {
+	sec.mtx.RLock()
+	b = len(sec.props) > 0
+	sec.mtx.RUnlock()
+	return
 }
 
 // getKeys returns an array containing all keys in this section.

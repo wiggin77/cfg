@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math"
 	"strings"
+
+	"github.com/wiggin77/config/merrors"
 )
 
 // LF is linefeed
@@ -22,44 +24,36 @@ const CR byte = 0x0D
 // Any errors encountered are aggregated and returned, along with the partially parsed
 // sections.
 func getSections(str string) (map[string]*Section, error) {
-	merr := NewMultiError(math.MaxInt32)
+	merr := merrors.New(math.MaxInt32)
 	mapSections := make(map[string]*Section)
 	lines := buildLineArray(str)
-	props := make(map[string]string)
-	var secNameFound string
-	bFoundSec := false
+	section := newSection("")
 
 	for _, line := range lines {
 		name, ok := parseSection(line)
-		if bFoundSec && ok {
-			// Another section name encountered. Stop processing this one.
-			// Don't add the previous section to the map if the section name is blank
-			// and the prop list is empty.
-			if secNameFound != "" || len(props) > 0 {
-				section := newSection(secNameFound, props)
-				mapSections[secNameFound] = section
+		if ok {
+			// A section name encountered. Stop processing the current one.
+			// Don't add the current section to the map if the section name is blank
+			// and the prop map is empty.
+			nameCurr := section.GetName()
+			if nameCurr != "" || section.hasKeys() {
+				mapSections[nameCurr] = section
 			}
-			bFoundSec = false
-		} else if bFoundSec {
-			// Parse the property and add to the props map.
+			// Start processing a new section.
+			section = newSection(name)
+		} else {
+			// Parse the property and add to the current section, or ignore if comment.
 			if k, v, comment, err := parseProp(line); !comment && err == nil {
-				props[k] = v
+				section.setProp(k, v)
 			} else if err != nil {
 				merr.Append(err) // aggregate errors
 			}
 		}
 
-		if !bFoundSec && ok {
-			// Start processing a new section.
-			secNameFound = name
-			props = make(map[string]string)
-			bFoundSec = true
-		}
 	}
-	if bFoundSec {
-		// Last section found.
-		section := newSection(secNameFound, props)
-		mapSections[secNameFound] = section
+	// If the current section is not empty, add it.
+	if section.hasKeys() {
+		mapSections[section.GetName()] = section
 	}
 	var err error
 	if merr.Len() > 0 {
