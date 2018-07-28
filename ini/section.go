@@ -96,7 +96,7 @@ func (sec *Section) String() string {
 // without the section header.
 func (sec *Section) StringPropsOnly() string {
 	sec.mtx.RLock()
-	sec.mtx.RUnlock()
+	defer sec.mtx.RUnlock()
 	sb := &strings.Builder{}
 
 	for k, v := range sec.props {

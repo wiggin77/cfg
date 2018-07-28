@@ -207,6 +207,8 @@ func (config *Config) RemoveChangedListener(l ChangedListener) error {
 	dest := make([]ChangedListener, 0, len(config.chgListeners))
 	err := ErrNotFound
 
+	// Remove all instances of the listener by
+	// copying list while filtering.
 	for _, s := range config.chgListeners {
 		if s != l {
 			dest = append(dest, s)
@@ -227,8 +229,8 @@ func (config *Config) Shutdown() {
 	}
 }
 
-// onSourceChanged is called whenever a config source properties
-// have changed.
+// onSourceChanged is called whenever one or more properties of a
+// config source has changed.
 func (config *Config) onSourceChanged(src SourceMonitored) {
 	defer func() {
 		if p := recover(); p != nil {
