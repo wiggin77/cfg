@@ -1,60 +1,78 @@
 package merrors
 
-import (
-	"bytes"
-	"strconv"
-)
-
-// MultiError represents zero or more errors that can be
+// MError represents zero or more errors that can be
 // accumulated via the `Append` method.
-type MultiError struct {
-	max      int
-	errors   []error
-	overflow int
+type MError struct {
+	cap       int
+	errors    []error
+	overflow  int
+	formatter FormatterFunc
 }
 
-// New returns a new instance of MultiError. `max` determines
-// the maximum number of errors that can be appended, after which
-// only the overflow counter will be incremented.
-func New(max int) *MultiError {
-	me := MultiError{}
-	me.max = max
+// New returns a new instance of `MError` with no limit on the
+// number of errors that can be appended.
+func New() *MError {
+	me := &MError{}
 	me.errors = make([]error, 0, 10)
-	me.overflow = 0
-	return &me
+	return me
 }
 
-// Append adds an error to the combined error list
-func (me *MultiError) Append(err error) {
+// NewWithCap returns a new instance of `MError` with a maximum
+// capacity of `cap` errors. If exceeded only the overflow counter
+// will be incremented.
+//
+// A `cap` of zero of less means no cap and max size of a slice
+// on the current platform is the upper bound.
+func NewWithCap(cap int) *MError {
+	me := New()
+	me.cap = cap
+	return me
+}
+
+// Append adds an error to the aggregated error list.
+func (me *MError) Append(err error) {
 	if err == nil {
 		return
 	}
-	if len(me.errors) >= me.max {
+	if me.cap > 0 && len(me.errors) >= me.cap {
 		me.overflow++
 	} else {
 		me.errors = append(me.errors, err)
 	}
 }
 
+// Errors returns an array of the `error` instances that have been
+// appended to this `MError`.
+func (me *MError) Errors() []error {
+	return me.errors
+}
+
 // Len returns the number of errors that have been appended.
-func (me *MultiError) Len() int {
+func (me *MError) Len() int {
 	return len(me.errors)
 }
 
-// Error returns a string representation of this MultiError.
-// All the errors are converted to string, delimited with newlines,
-// and the number of overflow errors appended to the end.
-func (me *MultiError) Error() string {
-	buf := bytes.Buffer{}
-	buf.WriteString("MultiError:\n")
-	for _, err := range me.errors {
-		buf.WriteString(err.Error())
-		buf.WriteString("\n")
+// Overflow returns the number of errors that have been truncated
+// because maximum capacity was exceeded.
+func (me *MError) Overflow() int {
+	return me.overflow
+}
+
+// SetFormatter sets the `FormatterFunc` to be used when `Error` is
+// called. The previous `FormatterFunc` is returned.
+func (me *MError) SetFormatter(f FormatterFunc) (old FormatterFunc) {
+	old = me.formatter
+	me.formatter = f
+	return
+}
+
+// Error returns a string representation of this MError.
+// The output format depends on the `Formatter` set for this
+// merror instance, or the global formatter if none set.
+func (me *MError) Error() string {
+	f := me.formatter
+	if f == nil {
+		f = GlobalFormatter
 	}
-	if me.overflow > 0 {
-		buf.WriteString("... ")
-		buf.WriteString(strconv.Itoa(me.overflow))
-		buf.WriteString(" errors truncated.\n")
-	}
-	return buf.String()
+	return f(me)
 }
