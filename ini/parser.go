@@ -2,10 +2,9 @@ package ini
 
 import (
 	"fmt"
-	"math"
 	"strings"
 
-	"github.com/wiggin77/config/merrors"
+	"github.com/wiggin77/merror"
 )
 
 // LF is linefeed
@@ -24,7 +23,7 @@ const CR byte = 0x0D
 // Any errors encountered are aggregated and returned, along with the partially parsed
 // sections.
 func getSections(str string) (map[string]*Section, error) {
-	merr := merrors.New(math.MaxInt32)
+	merr := merror.New()
 	mapSections := make(map[string]*Section)
 	lines := buildLineArray(str)
 	section := newSection("")
@@ -55,11 +54,7 @@ func getSections(str string) (map[string]*Section, error) {
 	if section.hasKeys() {
 		mapSections[section.GetName()] = section
 	}
-	var err error
-	if merr.Len() > 0 {
-		err = merr
-	}
-	return mapSections, err
+	return mapSections, merr.ErrorOrNil()
 }
 
 // buildLineArray parses the given string buffer and creates a list of strings,
