@@ -25,7 +25,7 @@ type Notify struct {
 	count int32
 }
 
-func (n *Notify) Changed(cfg *Config, src SourceMonitored) {
+func (n *Notify) ConfigChanged(cfg *Config, src SourceMonitored) {
 	atomic.AddInt32(&n.count, 1)
 }
 

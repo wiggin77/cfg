@@ -240,7 +240,7 @@ func (config *Config) onSourceChanged(src SourceMonitored) {
 	config.mutexListeners.RLock()
 	defer config.mutexListeners.RUnlock()
 	for _, l := range config.chgListeners {
-		l.Changed(config, src)
+		l.ConfigChanged(config, src)
 	}
 }
 

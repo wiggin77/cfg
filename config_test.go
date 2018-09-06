@@ -164,7 +164,7 @@ type TestListener struct {
 	_ [1]byte // cannot be empty struct
 }
 
-func (l *TestListener) Changed(cfg *Config, src SourceMonitored) {
+func (l *TestListener) ConfigChanged(cfg *Config, src SourceMonitored) {
 }
 
 const noerror = ""

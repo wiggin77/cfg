@@ -1,6 +1,7 @@
 package config
 
 import (
+	"sync"
 	"time"
 )
 
@@ -31,4 +32,27 @@ type SourceMonitored interface {
 	// `GetMontitorFreq` will be called at a frequency roughly equal to the `time.Duration`
 	// returned.
 	GetMonitorFreq() time.Duration
+}
+
+// AbstractSourceMonitor can be embedded in a custom `Source` to provide the
+// basic plumbing for monitor frequency.
+type AbstractSourceMonitor struct {
+	mutex sync.Mutex
+	freq  time.Duration
+}
+
+// GetMonitorFreq returns the frequency as a `time.Duration` between
+// checks for changes to this config source.
+func (asm *AbstractSourceMonitor) GetMonitorFreq() (freq time.Duration) {
+	asm.mutex.Lock()
+	freq = asm.freq
+	asm.mutex.Unlock()
+	return
+}
+
+// SetMonitorFreq sets the frequency between checks for changes to this config source.
+func (asm *AbstractSourceMonitor) SetMonitorFreq(freq time.Duration) {
+	asm.mutex.Lock()
+	asm.freq = freq
+	asm.mutex.Unlock()
 }

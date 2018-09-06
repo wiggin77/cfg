@@ -7,5 +7,5 @@ type ChangedListener interface {
 
 	// Changed is called when one or more properties in a `SourceMonitored` has a
 	// changed value.
-	Changed(cfg *Config, src SourceMonitored)
+	ConfigChanged(cfg *Config, src SourceMonitored)
 }

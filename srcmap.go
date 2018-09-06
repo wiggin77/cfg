@@ -1,16 +1,14 @@
 package config
 
 import (
-	"sync"
 	"time"
 )
 
 // SrcMap is a configuration `Source` backed by a simple map.
 type SrcMap struct {
-	mutex sync.Mutex
-	m     map[string]string
-	lm    time.Time
-	freq  time.Duration
+	AbstractSourceMonitor
+	m  map[string]string
+	lm time.Time
 }
 
 // NewSrcMap creates an empty `SrcMap`.
@@ -67,21 +65,4 @@ func (sm *SrcMap) GetLastModified() (last time.Time) {
 	last = sm.lm
 	sm.mutex.Unlock()
 	return
-}
-
-// GetMonitorFreq returns the frequency as a `time.Duration` between
-// checks for changes to this config source. Defaults to 1 minute
-// unless changed with `GetMonitorFreq`.
-func (sm *SrcMap) GetMonitorFreq() (freq time.Duration) {
-	sm.mutex.Lock()
-	freq = sm.freq
-	sm.mutex.Unlock()
-	return
-}
-
-// SetMonitorFreq sets the frequency between checks for changes to this config source.
-func (sm *SrcMap) SetMonitorFreq(freq time.Duration) {
-	sm.mutex.Lock()
-	sm.freq = freq
-	sm.mutex.Unlock()
 }
