@@ -12,7 +12,7 @@ import (
 type SrcFile struct {
 	AbstractSourceMonitor
 	ini  ini.Ini
-	file os.File
+	file *os.File
 }
 
 // NewSrcFileFromFilespec creates a new SrcFile with the specified filespec.
@@ -28,22 +28,36 @@ func NewSrcFileFromFilespec(filespec string) (*SrcFile, error) {
 func NewSrcFile(file *os.File) (*SrcFile, error) {
 	sf := &SrcFile{}
 	sf.freq = time.Minute
+	sf.file = file
 	if err := sf.ini.LoadFromFile(file); err != nil {
 		return nil, err
 	}
 	return sf, nil
 }
 
+// GetProps fetches all the properties from a source and returns
+// them as a map.
+func (sf *SrcFile) GetProps() (map[string]string, error) {
+	lm, err := sf.GetLastModified()
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if we need to reload.
+	if sf.ini.GetLastModified() != lm {
+		if err := sf.ini.LoadFromFile(sf.file); err != nil {
+			return nil, err
+		}
+	}
+	return sf.ini.ToMap(), nil
+}
+
 // GetLastModified returns the time of the latest modification to any
 // property value within the source.
-func (sf *SrcFile) GetLastModified() time.Time {
-
-	// Since a source could change between calls to GetLastModified,
-	// then it is currently possible to fetch changed properties
-	// before the listeners are notified of changes.
-	//
-	// This needs a push ability for sources to notify of changes,
-	// while using the GetLastModified calls as a convenient way to
-	// know when to check for changes (if that makes sense for source type).
-
+func (sf *SrcFile) GetLastModified() (time.Time, error) {
+	fi, err := sf.file.Stat()
+	if err != nil {
+		return time.Now(), err
+	}
+	return fi.ModTime(), nil
 }

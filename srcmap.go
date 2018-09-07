@@ -44,15 +44,15 @@ func (sm *SrcMap) PutAll(mapIn map[string]string) {
 	for k, v := range mapIn {
 		sm.m[k] = v
 	}
+	sm.lm = time.Now()
 }
 
-// GetProp fetches the value of a named property. The value is
-// returned as a string unless the name is not found, in which
-// case `ok=false` is returned.
-func (sm *SrcMap) GetProp(name string) (val string, ok bool) {
-	sm.mutex.Lock()
-	val, ok = sm.m[name]
-	sm.mutex.Unlock()
+// GetProps fetches all the properties from a source and returns
+// them as a map.
+func (sm *SrcMap) GetProps() (m map[string]string, err error) {
+	sm.mutex.RLock()
+	m = sm.m
+	sm.mutex.RUnlock()
 	return
 }
 
@@ -60,9 +60,9 @@ func (sm *SrcMap) GetProp(name string) (val string, ok bool) {
 // property value within the source. If a source does not support
 // modifying properties at runtime then the zero value for `Time`
 // should be returned to ensure reload events are not generated.
-func (sm *SrcMap) GetLastModified() (last time.Time) {
-	sm.mutex.Lock()
+func (sm *SrcMap) GetLastModified() (last time.Time, err error) {
+	sm.mutex.RLock()
 	last = sm.lm
-	sm.mutex.Unlock()
+	sm.mutex.RUnlock()
 	return
 }

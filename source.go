@@ -8,21 +8,21 @@ import (
 // Source is the interface required for any source of name/value pairs.
 type Source interface {
 
-	// GetProp fetches the value of a named property. The value is
-	// returned as a string unless the name is not found, in which
-	// case `ok=false` is returned.
-	GetProp(name string) (val string, ok bool)
+	// GetProps fetches all the properties from a source and returns
+	// them as a map.
+	GetProps() (map[string]string, error)
 }
 
 // SourceMonitored is the interface required for any config source that is
 // monitored for changes.
 type SourceMonitored interface {
+	Source
 
 	// GetLastModified returns the time of the latest modification to any
 	// property value within the source. If a source does not support
 	// modifying properties at runtime then the zero value for `Time`
 	// should be returned to ensure reload events are not generated.
-	GetLastModified() time.Time
+	GetLastModified() (time.Time, error)
 
 	// GetMonitorFreq returns the frequency as a `time.Duration` between
 	// checks for changes to this config source.
@@ -37,16 +37,16 @@ type SourceMonitored interface {
 // AbstractSourceMonitor can be embedded in a custom `Source` to provide the
 // basic plumbing for monitor frequency.
 type AbstractSourceMonitor struct {
-	mutex sync.Mutex
+	mutex sync.RWMutex
 	freq  time.Duration
 }
 
 // GetMonitorFreq returns the frequency as a `time.Duration` between
 // checks for changes to this config source.
 func (asm *AbstractSourceMonitor) GetMonitorFreq() (freq time.Duration) {
-	asm.mutex.Lock()
+	asm.mutex.RLock()
 	freq = asm.freq
-	asm.mutex.Unlock()
+	asm.mutex.RUnlock()
 	return
 }
 

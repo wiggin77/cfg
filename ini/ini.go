@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"sync"
+	"time"
 )
 
 // Ini provides parsing and querying of INI format or simple name/value pairs
@@ -15,6 +16,7 @@ import (
 type Ini struct {
 	mutex sync.RWMutex
 	m     map[string]*Section
+	lm    time.Time
 }
 
 // LoadFromFilespec loads an INI file from string containing path and filename.
@@ -28,7 +30,18 @@ func (ini *Ini) LoadFromFilespec(filespec string) error {
 
 // LoadFromFile loads an INI file from `os.File`.
 func (ini *Ini) LoadFromFile(file *os.File) error {
-	return ini.LoadFromReader(file)
+
+	fi, err := file.Stat()
+	if err != nil {
+		return err
+	}
+	lm := fi.ModTime()
+
+	if err := ini.LoadFromReader(file); err != nil {
+		return err
+	}
+	ini.lm = lm
+	return nil
 }
 
 // LoadFromReader loads an INI file from an `io.Reader`.
@@ -48,8 +61,15 @@ func (ini *Ini) LoadFromString(s string) error {
 	}
 	ini.mutex.Lock()
 	ini.m = m
+	ini.lm = time.Now()
 	ini.mutex.Unlock()
 	return nil
+}
+
+// GetLastModified returns the last modified timestamp of the
+// INI contents.
+func (ini *Ini) GetLastModified() time.Time {
+	return ini.lm
 }
 
 // GetSectionNames returns the names of all sections in this INI.
