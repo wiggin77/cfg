@@ -71,7 +71,7 @@ func (sm *SrcMap) GetLastModified() (last time.Time) {
 
 // GetMonitorFreq returns the frequency as a `time.Duration` between
 // checks for changes to this config source. Defaults to 1 minute
-// unless changed with `GetMonitorFreq`.
+// unless changed with `SetMonitorFreq`.
 func (sm *SrcMap) GetMonitorFreq() (freq time.Duration) {
 	sm.mutex.Lock()
 	freq = sm.freq
