@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	timeutil "github.com/wiggin77/config/time"
+	"github.com/wiggin77/config/timeconv"
 )
 
 // ErrNotFound returned when an operation is attempted on a
@@ -104,8 +104,8 @@ func (config *Config) ShouldPanicOnError() (b bool) {
 }
 
 // getProp returns the value of a named property.
-// Each `Source` is checked, in the order they are added via
-// `ApppendSource` and `PrependSource`, until a value for the
+// Each `Source` is checked, in the order created by adding via
+// `AppendSource` and `PrependSource`, until a value for the
 // property is found.
 func (config *Config) getProp(name string) (val string, ok bool) {
 	config.mutexSrc.RLock()
@@ -229,7 +229,7 @@ func (config *Config) Duration(name string, def time.Duration) (val time.Duratio
 	var s string
 	if s, err = config.String(name, ""); err == nil {
 		var ms int64
-		ms, err = timeutil.ParseMilliseconds(s)
+		ms, err = timeconv.ParseMilliseconds(s)
 		val = time.Duration(ms) * time.Millisecond
 	}
 	if err != nil {
