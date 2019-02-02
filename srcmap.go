@@ -66,3 +66,14 @@ func (sm *SrcMap) GetLastModified() (last time.Time, err error) {
 	sm.mutex.RUnlock()
 	return
 }
+
+// GetMonitorFreq returns the frequency as a `time.Duration` between
+// checks for changes to this config source. Defaults to 1 minute
+// unless changed with `SetMonitorFreq`.
+func (sm *SrcMap) GetMonitorFreq() (freq time.Duration) {
+	sm.mutex.Lock()
+	freq = sm.freq
+	sm.mutex.Unlock()
+>>>>>>> df5bfaf6be6ec263d9fe13d2f0d7229d04f796a5
+	return
+}
