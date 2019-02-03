@@ -55,9 +55,9 @@ func (ini *Ini) LoadFromReader(reader io.Reader) error {
 
 // LoadFromString parses an INI from a string .
 func (ini *Ini) LoadFromString(s string) error {
-	m, err := getSections(string(s))
+	m, err := getSections(s)
 	if err != nil {
-		return nil
+		return err
 	}
 	ini.mutex.Lock()
 	ini.m = m
