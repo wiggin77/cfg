@@ -80,7 +80,7 @@ func (ini *Ini) GetSectionNames() []string {
 	ini.mutex.RLock()
 	defer ini.mutex.RUnlock()
 
-	arr := make([]string, len(ini.m))
+	arr := make([]string, 0, len(ini.m))
 	for key := range ini.m {
 		arr = append(arr, key)
 	}
@@ -117,9 +117,16 @@ func (ini *Ini) GetFlattenedKeys() []string {
 	ini.mutex.RLock()
 	defer ini.mutex.RUnlock()
 
-	arr := make([]string, len(ini.m))
+	arr := make([]string, 0, len(ini.m)*2)
 	for _, section := range ini.m {
-		arr = append(arr, section.getKeys()...)
+		keys := section.getKeys()
+		for _, key := range keys {
+			name := section.GetName()
+			if name != "" {
+				key = name + "." + key
+			}
+			arr = append(arr, key)
+		}
 	}
 	return arr
 }
@@ -145,7 +152,14 @@ func (ini *Ini) ToMap() map[string]string {
 		for _, key := range section.getKeys() {
 			val, ok := section.GetProp(key)
 			if ok {
-				m[key] = val
+				name := section.GetName()
+				var mapkey string
+				if name != "" {
+					mapkey = name + "." + key
+				} else {
+					mapkey = key
+				}
+				m[mapkey] = val
 			}
 		}
 	}
