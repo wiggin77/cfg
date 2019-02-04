@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	timeutil "github.com/wiggin77/config/time"
+	"github.com/wiggin77/config/timeconv"
 )
 
 func TestConfig_PrependSource(t *testing.T) {
@@ -375,12 +375,12 @@ func TestConfig_Duration(t *testing.T) {
 		// All supported units of measure tested in "github.com/wiggin77/config/time"
 		{1, "none", "1", ms2dur(-1), ms2dur(1), noerror},
 		{1, "ms", "1ms", ms2dur(-1), ms2dur(1), noerror},
-		{1, "sec", "1sec", ms2dur(-1), ms2dur(timeutil.MillisPerSecond), noerror},
-		{1, "min", "1min", ms2dur(-1), ms2dur(timeutil.MillisPerMinute), noerror},
-		{1, "hour", "1hour", ms2dur(-1), ms2dur(timeutil.MillisPerHour), noerror},
-		{1, "day", "1day", ms2dur(-1), ms2dur(timeutil.MillisPerDay), noerror},
-		{1, "week", "1week", ms2dur(-1), ms2dur(timeutil.MillisPerWeek), noerror},
-		{1, "year", "1year", ms2dur(-1), ms2dur(timeutil.MillisPerYear), noerror},
+		{1, "sec", "1sec", ms2dur(-1), ms2dur(timeconv.MillisPerSecond), noerror},
+		{1, "min", "1min", ms2dur(-1), ms2dur(timeconv.MillisPerMinute), noerror},
+		{1, "hour", "1hour", ms2dur(-1), ms2dur(timeconv.MillisPerHour), noerror},
+		{1, "day", "1day", ms2dur(-1), ms2dur(timeconv.MillisPerDay), noerror},
+		{1, "week", "1week", ms2dur(-1), ms2dur(timeconv.MillisPerWeek), noerror},
+		{1, "year", "1year", ms2dur(-1), ms2dur(timeconv.MillisPerYear), noerror},
 
 		{3, "fraction1", "1.025", ms2dur(-1), ms2dur(1), noerror},
 		{3, "fraction2", "1.5 minutes", ms2dur(-1), ms2dur(90000), noerror},
@@ -389,7 +389,7 @@ func TestConfig_Duration(t *testing.T) {
 		{1, "neg", "-5", ms2dur(-1), ms2dur(-5), noerror},
 		{1, "neg_zero", "-0", ms2dur(-1), ms2dur(0), noerror},
 		{1, "pos_zero", "+0", ms2dur(-1), ms2dur(0), noerror},
-		{1, "big", "400 years", ms2dur(-1), ms2dur(timeutil.MillisPerYear * 400), noerror},
+		{1, "big", "400 years", ms2dur(-1), ms2dur(timeconv.MillisPerYear * 400), noerror},
 		{3, "overflow", "400000000 years", ms2dur(-1), ms2dur(-1), "out of range"},
 		{3, "bad1", "00x55", ms2dur(-1), ms2dur(-1), "invalid syntax"},
 		{3, "bad2", "1..025 days", ms2dur(-1), ms2dur(-1), "invalid syntax"},

@@ -316,7 +316,7 @@ func (config *Config) monitor(se *sourceEntry) {
 				if !paused {
 					if latest, err := src.GetLastModified(); err != nil {
 						if config.ShouldPanicOnError() {
-							panic(fmt.Sprintf("Error <%v> getting last modified for %v", err, src))
+							panic(fmt.Sprintf("error <%v> getting last modified for %v", err, src))
 						}
 					} else {
 						if last.Before(latest) {
