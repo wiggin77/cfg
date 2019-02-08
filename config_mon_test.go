@@ -3,7 +3,6 @@ package config
 import (
 	"math/rand"
 	"strconv"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -30,44 +29,45 @@ func (n *Notify) ConfigChanged(cfg *Config, src SourceMonitored) {
 }
 
 func TestConfig_Monitor(t *testing.T) {
-	const loops int = 100
-	mapSrc := makeSrc(time.Millisecond * 20)
 	cfg := &Config{}
+	defer cfg.Shutdown()
+
+	mapSrc := makeSrc(time.Millisecond * 20)
 	cfg.AppendSource(mapSrc)
-	var wg sync.WaitGroup
 
 	notify := &Notify{}
 	cfg.AddChangedListener(notify)
 
-	r := rand.New(rand.NewSource(77))
-	for i := 0; i < loops; i++ {
-		wg.Add(1)
-		go func(idx int, rnd int) {
-			defer wg.Done()
-			time.Sleep(time.Millisecond * time.Duration(rnd))
-			mapSrc.Put("prop0", strconv.Itoa(idx))
-		}(i, r.Intn(50)+50)
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	done := time.After(2 * time.Second)
+	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
+	isDone := false
+	actual := int32(0)
+	for !isDone {
+		select {
+		case <-ticker.C:
+			mapSrc.Put("prop1", strconv.Itoa(rnd.Intn(30)))
+			actual++
+		case <-done:
+			isDone = true
+		}
 	}
 
-	wg.Wait()
 	count := atomic.LoadInt32(&notify.count)
-	if count <= 0 {
-		t.Error("ChangedListener was not called")
+	if count != actual {
+		t.Errorf("ChangedListener was called %d times; expected %d", count, actual)
 	}
 
+	// make sure listener not called after removal.
 	atomic.StoreInt32(&notify.count, 0)
 	cfg.RemoveChangedListener(notify)
 
-	for i := 0; i < loops; i++ {
-		wg.Add(1)
-		go func(idx int, rnd int) {
-			defer wg.Done()
-			time.Sleep(time.Millisecond * time.Duration(rnd))
-			mapSrc.Put("prop1", strconv.Itoa(idx))
-		}(i, r.Intn(50)+50)
-	}
+	mapSrc.Put("prop1", "n/a")
+	time.Sleep(50 * time.Millisecond)
+	mapSrc.Put("prop2", "n/a")
+	time.Sleep(50 * time.Millisecond)
 
-	wg.Wait()
 	count = atomic.LoadInt32(&notify.count)
 	if count != 0 {
 		t.Errorf("ChangedListener was called %d times after being removed.", count)
