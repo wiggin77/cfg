@@ -1,5 +1,7 @@
 # config
 
+[![GoDoc](https://godoc.org/github.com/wiggin77/config?status.svg)](https://godoc.org/github.com/wiggin77/config)
+
 Go package for app configuration. Supports chained configuration sources for multiple levels of defaults.
 Includes APIs for loading Linux style configuration files (name/value pairs) or INI files, map based properties,
 or easily create new configuration sources (e.g. load from database).
