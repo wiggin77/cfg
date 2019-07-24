@@ -18,48 +18,48 @@ func TestConfig_PrependSource(t *testing.T) {
 	map3 := map[string]string{"prop3": "3", "prop2": "3", "prop1": "3"}
 	src3 := NewSrcMapFromMap(map3)
 
-	cfg := &Config{}
-	defer cfg.Shutdown()
+	config := &Config{}
+	defer config.Shutdown()
 
 	// Prepend one to empty config.
-	cfg.PrependSource(src1)
-	if len(cfg.srcs) != 1 {
-		t.Errorf("Prepend src to empty config; expected len=1, got len=%d", len(cfg.srcs))
+	config.PrependSource(src1)
+	if len(config.srcs) != 1 {
+		t.Errorf("Prepend src to empty config; expected len=1, got len=%d", len(config.srcs))
 	}
-	if val, err := cfg.String("prop1", ""); err != nil || val != "1" {
+	if val, err := config.String("prop1", ""); err != nil || val != "1" {
 		t.Errorf("Prepend src to empty config; expected err=nil, val=1; got err=%v, val=%s", err, val)
 	}
-	if _, err := cfg.String("blap", ""); err == nil {
+	if _, err := config.String("blap", ""); err == nil {
 		t.Errorf("Prepend src to empty config; expected err=false for missing prop, got err=%v", err)
 	}
 
 	// Prepend second
-	cfg.PrependSource(src2)
-	if len(cfg.srcs) != 2 {
-		t.Errorf("Prepend second src; expected len=2, got len=%d", len(cfg.srcs))
+	config.PrependSource(src2)
+	if len(config.srcs) != 2 {
+		t.Errorf("Prepend second src; expected len=2, got len=%d", len(config.srcs))
 	}
-	if val, err := cfg.String("prop1", ""); err != nil || val != "2" {
+	if val, err := config.String("prop1", ""); err != nil || val != "2" {
 		t.Errorf("Prepend second src; for prop1 expected err=nil, val=2; got err=%v, val=%s", err, val)
 	}
-	if val, err := cfg.String("prop2", ""); err != nil || val != "2" {
+	if val, err := config.String("prop2", ""); err != nil || val != "2" {
 		t.Errorf("Prepend second src; for prop2 expected err=nil, val=2; got err=%v, val=%s", err, val)
 	}
 
 	// Prepend third
-	cfg.PrependSource(src3)
-	if len(cfg.srcs) != 3 {
-		t.Errorf("Prepend third src; expected len=3, got len=%d", len(cfg.srcs))
+	config.PrependSource(src3)
+	if len(config.srcs) != 3 {
+		t.Errorf("Prepend third src; expected len=3, got len=%d", len(config.srcs))
 	}
-	if val, err := cfg.String("prop1", ""); err != nil || val != "3" {
+	if val, err := config.String("prop1", ""); err != nil || val != "3" {
 		t.Errorf("Prepend third src; for prop1 expected err=nil, val=3; got err=%v, val=%s", err, val)
 	}
-	if val, err := cfg.String("prop2", ""); err != nil || val != "3" {
+	if val, err := config.String("prop2", ""); err != nil || val != "3" {
 		t.Errorf("Prepend third src; for prop2 expected err=nil, val=3; got err=%v, val=%s", err, val)
 	}
-	if val, err := cfg.String("prop3", ""); err != nil || val != "3" {
+	if val, err := config.String("prop3", ""); err != nil || val != "3" {
 		t.Errorf("Prepend third src; for prop3 expected err=nil, val=3; got err=%v, val=%s", err, val)
 	}
-	if _, err := cfg.String("blap", ""); err == nil {
+	if _, err := config.String("blap", ""); err == nil {
 		t.Errorf("Prepend third src; expected err=false for missing prop, got err=%v", err)
 	}
 }
@@ -72,48 +72,48 @@ func TestConfig_AppendSource(t *testing.T) {
 	map3 := map[string]string{"prop3": "3", "prop2": "3", "prop1": "3"}
 	src3 := NewSrcMapFromMap(map3)
 
-	cfg := &Config{}
-	defer cfg.Shutdown()
+	config := &Config{}
+	defer config.Shutdown()
 
 	// Append to empty config.
-	cfg.AppendSource(src1)
-	if len(cfg.srcs) != 1 {
-		t.Errorf("Append src to empty config; expected len=1, got len=%d", len(cfg.srcs))
+	config.AppendSource(src1)
+	if len(config.srcs) != 1 {
+		t.Errorf("Append src to empty config; expected len=1, got len=%d", len(config.srcs))
 	}
-	if val, err := cfg.String("prop1", ""); err != nil || val != "1" {
+	if val, err := config.String("prop1", ""); err != nil || val != "1" {
 		t.Errorf("Append src to empty config; expected err=nil, val=1; got err=%v, val=%s", err, val)
 	}
-	if _, err := cfg.String("blap", ""); err == nil {
+	if _, err := config.String("blap", ""); err == nil {
 		t.Errorf("Append src to empty config; expected err=false for missing prop, got err=%v", err)
 	}
 
 	// Append second
-	cfg.AppendSource(src2)
-	if len(cfg.srcs) != 2 {
-		t.Errorf("Append second src; expected len=2, got len=%d", len(cfg.srcs))
+	config.AppendSource(src2)
+	if len(config.srcs) != 2 {
+		t.Errorf("Append second src; expected len=2, got len=%d", len(config.srcs))
 	}
-	if val, err := cfg.String("prop1", ""); err != nil || val != "1" {
+	if val, err := config.String("prop1", ""); err != nil || val != "1" {
 		t.Errorf("Append second src; for prop1 expected err=nil, val=1; got err=%v, val=%s", err, val)
 	}
-	if val, err := cfg.String("prop2", ""); err != nil || val != "2" {
+	if val, err := config.String("prop2", ""); err != nil || val != "2" {
 		t.Errorf("Append second src; for prop2 expected err=nil, val=2; got err=%v, val=%s", err, val)
 	}
 
 	// Append third
-	cfg.AppendSource(src3)
-	if len(cfg.srcs) != 3 {
-		t.Errorf("Append third src; expected len=3, got len=%d", len(cfg.srcs))
+	config.AppendSource(src3)
+	if len(config.srcs) != 3 {
+		t.Errorf("Append third src; expected len=3, got len=%d", len(config.srcs))
 	}
-	if val, err := cfg.String("prop1", ""); err != nil || val != "1" {
+	if val, err := config.String("prop1", ""); err != nil || val != "1" {
 		t.Errorf("Append third src; for prop1 expected err=nil, val=1; got err=%v, val=%s", err, val)
 	}
-	if val, err := cfg.String("prop2", ""); err != nil || val != "2" {
+	if val, err := config.String("prop2", ""); err != nil || val != "2" {
 		t.Errorf("Append third src; for prop2 expected err=nil, val=2; got err=%v, val=%s", err, val)
 	}
-	if val, err := cfg.String("prop3", ""); err != nil || val != "3" {
+	if val, err := config.String("prop3", ""); err != nil || val != "3" {
 		t.Errorf("Append third src; for prop3 expected err=nil, val=3; got err=%v, val=%s", err, val)
 	}
-	if _, err := cfg.String("blap", ""); err == nil {
+	if _, err := config.String("blap", ""); err == nil {
 		t.Errorf("Append third src; expected err=false for missing prop, got err=%v", err)
 	}
 }
@@ -121,41 +121,41 @@ func TestConfig_AppendSource(t *testing.T) {
 func TestConfig_AddRemoveChangedListener(t *testing.T) {
 	map1 := map[string]string{"prop1": "1"}
 	src1 := NewSrcMapFromMap(map1)
-	cfg := &Config{}
-	defer cfg.Shutdown()
-	cfg.AppendSource(src1)
+	config := &Config{}
+	defer config.Shutdown()
+	config.AppendSource(src1)
 
 	tl1 := &TestListener{}
 	tl2 := &TestListener{}
 	tl3 := &TestListener{}
 
 	// Test Add
-	cfg.AddChangedListener(tl1)
-	if len(cfg.chgListeners) != 1 {
-		t.Errorf("AddChangeListener; expected len=1, got len=%d", len(cfg.chgListeners))
+	config.AddChangedListener(tl1)
+	if len(config.chgListeners) != 1 {
+		t.Errorf("AddChangeListener; expected len=1, got len=%d", len(config.chgListeners))
 	}
-	cfg.AddChangedListener(tl2)
-	if len(cfg.chgListeners) != 2 {
-		t.Errorf("AddChangeListener; expected len=2, got len=%d", len(cfg.chgListeners))
+	config.AddChangedListener(tl2)
+	if len(config.chgListeners) != 2 {
+		t.Errorf("AddChangeListener; expected len=2, got len=%d", len(config.chgListeners))
 	}
-	cfg.AddChangedListener(tl3)
-	cfg.AddChangedListener(tl1)
-	if len(cfg.chgListeners) != 4 {
-		t.Errorf("AddChangeListener; expected len=4, got len=%d", len(cfg.chgListeners))
+	config.AddChangedListener(tl3)
+	config.AddChangedListener(tl1)
+	if len(config.chgListeners) != 4 {
+		t.Errorf("AddChangeListener; expected len=4, got len=%d", len(config.chgListeners))
 	}
 
 	// Test remove
-	cfg.RemoveChangedListener(tl1)
-	if len(cfg.chgListeners) != 2 {
-		t.Errorf("RemoveChangeListener; expected len=2, got len=%d", len(cfg.chgListeners))
+	config.RemoveChangedListener(tl1)
+	if len(config.chgListeners) != 2 {
+		t.Errorf("RemoveChangeListener; expected len=2, got len=%d", len(config.chgListeners))
 	}
-	cfg.RemoveChangedListener(tl2)
-	if len(cfg.chgListeners) != 1 {
-		t.Errorf("RemoveChangeListener; expected len=1, got len=%d", len(cfg.chgListeners))
+	config.RemoveChangedListener(tl2)
+	if len(config.chgListeners) != 1 {
+		t.Errorf("RemoveChangeListener; expected len=1, got len=%d", len(config.chgListeners))
 	}
-	cfg.RemoveChangedListener(tl3)
-	if len(cfg.chgListeners) != 0 {
-		t.Errorf("RemoveChangeListener; expected len=0, got len=%d", len(cfg.chgListeners))
+	config.RemoveChangedListener(tl3)
+	if len(config.chgListeners) != 0 {
+		t.Errorf("RemoveChangeListener; expected len=0, got len=%d", len(config.chgListeners))
 	}
 }
 

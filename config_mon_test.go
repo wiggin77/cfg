@@ -29,14 +29,14 @@ func (n *Notify) ConfigChanged(cfg *Config, src SourceMonitored) {
 }
 
 func TestConfig_Monitor(t *testing.T) {
-	cfg := &Config{}
-	defer cfg.Shutdown()
+	config := &Config{}
+	defer config.Shutdown()
 
 	mapSrc := makeSrc(time.Millisecond * 20)
-	cfg.AppendSource(mapSrc)
+	config.AppendSource(mapSrc)
 
 	notify := &Notify{}
-	cfg.AddChangedListener(notify)
+	config.AddChangedListener(notify)
 
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
@@ -61,7 +61,7 @@ func TestConfig_Monitor(t *testing.T) {
 
 	// make sure listener not called after removal.
 	atomic.StoreInt32(&notify.count, 0)
-	cfg.RemoveChangedListener(notify)
+	config.RemoveChangedListener(notify)
 
 	mapSrc.Put("prop1", "n/a")
 	time.Sleep(50 * time.Millisecond)

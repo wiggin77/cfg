@@ -12,8 +12,8 @@ Supports monitoring configuration sources for changes, hot loading properties, a
 ## Usage
 
 ```Go
-cfg := &cfg.Config{}
-defer cfg.Shutdown() // stops monitoring
+config := &cfg.Config{}
+defer config.Shutdown() // stops monitoring
 
 // load file via filespec string, os.File
 src, err := Config.NewSrcFileFromFilespec("./myfile.conf")
@@ -21,10 +21,10 @@ if err != nil {
     return err
 }
 // add src to top of chain, meaning first searched
-Config.PrependSource(src)
+cfg.PrependSource(src)
 
 // fetch prop 'retries', default to 3 if not found
-val := cfg.Int("retries", 3)
+val := config.Int("retries", 3)
 ```
 
 See [example](./example_test.go) for more complete example, including listening for configuration changes.

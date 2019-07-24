@@ -28,24 +28,24 @@ func (l *listener) ConfigChanged(cfg *cfg.Config, src cfg.SourceMonitored) {
 
 func Example() {
 	// create a Config instance
-	cfg := &cfg.Config{}
+	config := &cfg.Config{}
 	// shutdown will stop monitoring the sources for changes
-	defer cfg.Shutdown()
+	defer config.Shutdown()
 
 	// for this sample use a source backed by a simple map
 	m := sampleMap()
 	src := cfg.NewSrcMapFromMap(m)
 
 	// add the source to the end of the searched sources
-	cfg.AppendSource(src)
+	config.AppendSource(src)
 
 	// add a source to the beginning of the searched sources,
 	// providing defaults for missing properties.
-	cfg.PrependSource(cfg.NewSrcMapFromMap(map[string]string{"maxRetries": "10"}))
+	config.PrependSource(cfg.NewSrcMapFromMap(map[string]string{"maxRetries": "10"}))
 
 	// listen for changes (why not use a func type here intead of interface? Because we
 	// need to be able to remove listeners and cannot do that with funcs).
-	cfg.AddChangedListener(&listener{})
+	config.AddChangedListener(&listener{})
 
 	// change a property every 1 seconds for 5 seconds.
 	ticker := time.NewTicker(1 * time.Second)
