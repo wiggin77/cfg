@@ -1,4 +1,4 @@
-package config
+package cfg
 
 // noCopy may be embedded into structs which must not be copied
 // after the first use.

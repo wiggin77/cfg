@@ -1,7 +1,7 @@
-# config
+# cfg
 
-[![GoDoc](https://godoc.org/github.com/wiggin77/config?status.svg)](https://godoc.org/github.com/wiggin77/config)
-[![Build Status](https://travis-ci.org/wiggin77/config.svg?branch=master)](https://travis-ci.org/wiggin77/config)
+[![GoDoc](https://godoc.org/github.com/wiggin77/cfg?status.svg)](https://godoc.org/github.com/wiggin77/cfg)
+[![Build Status](https://travis-ci.org/wiggin77/cfg.svg?branch=master)](https://travis-ci.org/wiggin77/cfg)
 
 Go package for app configuration. Supports chained configuration sources for multiple levels of defaults.
 Includes APIs for loading Linux style configuration files (name/value pairs) or INI files, map based properties,
@@ -12,11 +12,11 @@ Supports monitoring configuration sources for changes, hot loading properties, a
 ## Usage
 
 ```Go
-cfg := &config.Config{}
+cfg := &cfg.Config{}
 defer cfg.Shutdown() // stops monitoring
 
 // load file via filespec string, os.File
-src, err := config.NewSrcFileFromFilespec("./myfile.conf")
+src, err := cfg.NewSrcFileFromFilespec("./myfile.conf")
 if err != nil {
     return err
 }

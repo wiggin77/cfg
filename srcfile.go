@@ -1,10 +1,10 @@
-package config
+package cfg
 
 import (
 	"os"
 	"time"
 
-	"github.com/wiggin77/config/ini"
+	"github.com/wiggin77/cfg/ini"
 )
 
 // SrcFile is a configuration `Source` backed by a file containing

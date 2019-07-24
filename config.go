@@ -1,4 +1,4 @@
-package config
+package cfg
 
 import (
 	"errors"
@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wiggin77/config/timeconv"
+	"github.com/wiggin77/cfg/timeconv"
 )
 
 // ErrNotFound returned when an operation is attempted on a

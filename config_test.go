@@ -1,4 +1,4 @@
-package config
+package cfg
 
 import (
 	"math"
@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wiggin77/config/timeconv"
+	"github.com/wiggin77/cfg/timeconv"
 )
 
 func TestConfig_PrependSource(t *testing.T) {
@@ -372,7 +372,7 @@ func TestConfig_Duration(t *testing.T) {
 		// srcLevel, propName, propVal, defVal, expectedVal, expectedErrText
 		{0, "missing", "1", time.Duration(-1), time.Duration(-1), "not found"},
 
-		// All supported units of measure tested in "github.com/wiggin77/config/time"
+		// All supported units of measure tested in "github.com/wiggin77/cfg/time"
 		{1, "none", "1", ms2dur(-1), ms2dur(1), noerror},
 		{1, "ms", "1ms", ms2dur(-1), ms2dur(1), noerror},
 		{1, "sec", "1sec", ms2dur(-1), ms2dur(timeconv.MillisPerSecond), noerror},

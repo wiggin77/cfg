@@ -1,4 +1,4 @@
-package config_test
+package cfg_test
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/wiggin77/config"
+	"github.com/wiggin77/cfg"
 )
 
 func sampleMap() map[string]string {
@@ -22,26 +22,26 @@ type listener struct {
 	// empty
 }
 
-func (l *listener) ConfigChanged(cfg *config.Config, src config.SourceMonitored) {
+func (l *listener) ConfigChanged(cfg *cfg.Config, src cfg.SourceMonitored) {
 	fmt.Println("Config changed!")
 }
 
 func Example() {
 	// create a Config instance
-	cfg := &config.Config{}
+	cfg := &cfg.Config{}
 	// shutdown will stop monitoring the sources for changes
 	defer cfg.Shutdown()
 
 	// for this sample use a source backed by a simple map
 	m := sampleMap()
-	src := config.NewSrcMapFromMap(m)
+	src := cfg.NewSrcMapFromMap(m)
 
 	// add the source to the end of the searched sources
 	cfg.AppendSource(src)
 
 	// add a source to the beginning of the searched sources,
 	// providing defaults for missing properties.
-	cfg.PrependSource(config.NewSrcMapFromMap(map[string]string{"maxRetries": "10"}))
+	cfg.PrependSource(cfg.NewSrcMapFromMap(map[string]string{"maxRetries": "10"}))
 
 	// listen for changes (why not use a func type here intead of interface? Because we
 	// need to be able to remove listeners and cannot do that with funcs).

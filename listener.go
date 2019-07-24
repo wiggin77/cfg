@@ -1,4 +1,4 @@
-package config
+package cfg
 
 // ChangedListener interface is for receiving notifications
 // when one or more properties within monitored config sources

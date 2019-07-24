@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wiggin77/config/ini"
+	"github.com/wiggin77/cfg/ini"
 )
 
 type entry struct {
