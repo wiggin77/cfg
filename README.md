@@ -1,7 +1,7 @@
 # cfg
 
 [![GoDoc](https://godoc.org/github.com/wiggin77/cfg?status.svg)](https://godoc.org/github.com/wiggin77/cfg)
-[![Build Status](https://github.com/wiggin77/cfg/actions/workflows/go.yml/badge.svg)
+![Build Status](https://github.com/wiggin77/cfg/actions/workflows/go.yml/badge.svg)
 
 Go package for app configuration. Supports chained configuration sources for multiple levels of defaults.
 Includes APIs for loading Linux style configuration files (name/value pairs) or INI files, map based properties,
