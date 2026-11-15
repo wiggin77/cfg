@@ -23,8 +23,8 @@ if err != nil {
 // add src to top of chain, meaning first searched
 config.PrependSource(src)
 
-// fetch prop 'retries', default to 3 if not found
-val := config.Int("retries", 3)
+// fetch prop 'retries', default to 3 if not found or invalid
+val, _ := config.Int("retries", 3)
 ```
 
 See [example](./example_test.go) for more complete example, including listening for configuration changes.
@@ -37,7 +37,7 @@ Config API parses the following data types:
 | int     | Config.Int     | -1, 77, 0  |
 | int64   | Config.Int64   | -9223372036854775, 372036854775808 |
 | float64 | Config.Float64 | -77.3456, 95642331.1 |
-| bool    | Config.Bool    | T,t,true,True,1,0,False,false,f,F |
+| bool    | Config.Bool    | t, true, 1, y, yes, f, false, 0, n, no (case-insensitive) |
 | time.Duration | Config.Duration | "10ms", "2 hours", "5 min" * |
 
 \* Units of measure supported: ms, sec, min, hour, day, week, year.
