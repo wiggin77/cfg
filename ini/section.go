@@ -75,18 +75,6 @@ func (sec *Section) getKeys() []string {
 	return arr
 }
 
-// combine the given section with this one.
-func (sec *Section) combine(sec2 *Section) {
-	sec.mtx.Lock()
-	sec2.mtx.RLock()
-	defer sec.mtx.Unlock()
-	defer sec2.mtx.RUnlock()
-
-	for k, v := range sec2.props {
-		sec.props[k] = v
-	}
-}
-
 // String returns a string representation of this section.
 func (sec *Section) String() string {
 	return fmt.Sprintf("[%s]\n%s", sec.GetName(), sec.StringPropsOnly())

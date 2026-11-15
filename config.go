@@ -16,9 +16,12 @@ import (
 // property name.
 var ErrNotFound = errors.New("not found")
 
+const defaultPausedPollFreq = 10 * time.Second
+
 type sourceEntry struct {
-	src   Source
-	props map[string]string
+	src     Source
+	props   map[string]string
+	lastMod time.Time
 }
 
 // Config provides methods for retrieving property values from one or more
@@ -30,6 +33,7 @@ type Config struct {
 	chgListeners     []ChangedListener
 	shutdown         chan interface{}
 	wantPanicOnError bool
+	pausedPollFreq   time.Duration
 }
 
 // PrependSource inserts one or more `Sources` at the beginning of
@@ -46,8 +50,8 @@ func (config *Config) PrependSource(srcs ...Source) {
 	config.mutexSrc.Unlock()
 
 	for _, se := range arr {
-		if _, ok := se.src.(SourceMonitored); ok {
-			config.monitor(se)
+		if sm, ok := se.src.(SourceMonitored); ok {
+			config.monitor(se, sm)
 		}
 	}
 }
@@ -66,8 +70,8 @@ func (config *Config) AppendSource(srcs ...Source) {
 	config.mutexSrc.Unlock()
 
 	for _, se := range arr {
-		if _, ok := se.src.(SourceMonitored); ok {
-			config.monitor(se)
+		if sm, ok := se.src.(SourceMonitored); ok {
+			config.monitor(se, sm)
 		}
 	}
 }
@@ -78,6 +82,10 @@ func (config *Config) wrapSources(srcs ...Source) []*sourceEntry {
 	arr := make([]*sourceEntry, 0, len(srcs))
 	for _, src := range srcs {
 		se := &sourceEntry{src: src}
+		// Read before loading props so a change made during the load is still detected.
+		if sm, ok := src.(SourceMonitored); ok {
+			se.lastMod, _ = sm.GetLastModified()
+		}
 		config.reloadProps(se)
 		arr = append(arr, se)
 	}
@@ -281,35 +289,38 @@ func (config *Config) Shutdown() {
 // onSourceChanged is called whenever one or more properties of a
 // config source has changed.
 func (config *Config) onSourceChanged(src SourceMonitored) {
+	config.mutexListeners.RLock()
+	defer config.mutexListeners.RUnlock()
+	for _, l := range config.chgListeners {
+		config.notifyListener(l, src)
+	}
+}
+
+func (config *Config) notifyListener(l ChangedListener, src SourceMonitored) {
 	defer func() {
 		if p := recover(); p != nil {
 			fmt.Println(p)
 		}
 	}()
-	config.mutexListeners.RLock()
-	defer config.mutexListeners.RUnlock()
-	for _, l := range config.chgListeners {
-		l.ConfigChanged(config, src)
-	}
+	l.ConfigChanged(config, src)
 }
 
 // monitor periodically checks a config source for changes.
-func (config *Config) monitor(se *sourceEntry) {
-	go func(se *sourceEntry, shutdown <-chan interface{}) {
-		var src SourceMonitored
-		var ok bool
-		if src, ok = se.src.(SourceMonitored); !ok {
-			return
-		}
+func (config *Config) monitor(se *sourceEntry, src SourceMonitored) {
+	pausedFreq := config.pausedPollFreq
+	if pausedFreq <= 0 {
+		pausedFreq = defaultPausedPollFreq
+	}
+	go func(shutdown <-chan interface{}) {
 		paused := false
-		last := time.Time{}
+		last := se.lastMod
 		freq := src.GetMonitorFreq()
 		if freq <= 0 {
 			paused = true
-			freq = 10
-			last, _ = src.GetLastModified()
+			freq = pausedFreq
 		}
 		timer := time.NewTimer(freq)
+		defer timer.Stop()
 		for {
 			select {
 			case <-timer.C:
@@ -318,49 +329,44 @@ func (config *Config) monitor(se *sourceEntry) {
 						if config.ShouldPanicOnError() {
 							panic(fmt.Sprintf("error <%v> getting last modified for %v", err, src))
 						}
-					} else {
-						if last.Before(latest) {
-							last = latest
-							config.reloadProps(se)
-							// TODO: calc diff and provide detailed changes
-							config.onSourceChanged(src)
-						}
+					} else if last.Before(latest) && config.reloadProps(se) == nil {
+						last = latest
+						// TODO: calc diff and provide detailed changes
+						config.onSourceChanged(src)
 					}
 				}
 				freq = src.GetMonitorFreq()
 				if freq <= 0 {
 					paused = true
-					freq = 10
+					freq = pausedFreq
 				} else {
 					paused = false
 				}
 				timer.Reset(freq)
 			case <-shutdown:
-				// stop the timer and exit
-				if !timer.Stop() {
-					<-timer.C
-				}
 				return
 			}
 		}
-	}(se, config.shutdown)
+	}(config.shutdown)
 }
 
-// reloadProps causes a Source to reload its properties.
-func (config *Config) reloadProps(se *sourceEntry) {
+// reloadProps causes a Source to reload its properties. On error the
+// previously loaded properties are kept.
+func (config *Config) reloadProps(se *sourceEntry) error {
 	config.mutexSrc.Lock()
 	defer config.mutexSrc.Unlock()
 
 	m, err := se.src.GetProps()
 	if err != nil {
 		if config.wantPanicOnError {
-			panic(fmt.Sprintf("GetProps error for %v", se.src))
+			panic(fmt.Sprintf("error <%v> getting props for %v", err, se.src))
 		}
-		return
+		return err
 	}
 
 	se.props = make(map[string]string)
 	for k, v := range m {
 		se.props[k] = v
 	}
+	return nil
 }

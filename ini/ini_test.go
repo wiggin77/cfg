@@ -1,10 +1,14 @@
 package ini_test
 
 import (
+	"errors"
+	"os"
+	"path/filepath"
 	"reflect"
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/wiggin77/cfg/ini"
 )
@@ -168,5 +172,73 @@ func TestGetKeys(t *testing.T) {
 	keys, err = ini.GetKeys("blap")
 	if err == nil {
 		t.Errorf("expected error")
+	}
+}
+
+type errReader struct{}
+
+func (errReader) Read([]byte) (int, error) {
+	return 0, errors.New("read failed")
+}
+
+func TestLoadFromReaderReadError(t *testing.T) {
+	ini := ini.Ini{}
+	if err := ini.LoadFromReader(errReader{}); err == nil {
+		t.Errorf("expected error")
+	}
+}
+
+func TestLoadFromFilespec(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "test.ini")
+	if err := os.WriteFile(file, []byte(sample1), 0600); err != nil {
+		t.Fatal(err)
+	}
+	mtime := time.Now().Add(-time.Hour).Truncate(time.Second)
+	if err := os.Chtimes(file, mtime, mtime); err != nil {
+		t.Fatal(err)
+	}
+
+	ini := ini.Ini{}
+	if err := ini.LoadFromFilespec(file); err != nil {
+		t.Fatal(err)
+	}
+	if v, ok := ini.GetProp("sec1", "key1"); !ok || v != "val1" {
+		t.Errorf("sec1.key1 = %q, %v; want val1", v, ok)
+	}
+	if lm := ini.GetLastModified(); !lm.Equal(mtime) {
+		t.Errorf("GetLastModified = %v, want file mtime %v", lm, mtime)
+	}
+}
+
+func TestLoadFromFilespecErrors(t *testing.T) {
+	dir := t.TempDir()
+	ini := ini.Ini{}
+	if err := ini.LoadFromFilespec(filepath.Join(dir, "missing.ini")); err == nil {
+		t.Error("expected error for missing file")
+	}
+
+	bad := filepath.Join(dir, "bad.ini")
+	if err := os.WriteFile(bad, []byte("123blap"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := ini.LoadFromFilespec(bad); err == nil {
+		t.Error("expected error for invalid content")
+	}
+}
+
+func TestLoadFromFileClosed(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "test.ini")
+	if err := os.WriteFile(file, []byte(sample1), 0600); err != nil {
+		t.Fatal(err)
+	}
+	f, err := os.Open(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	ini := ini.Ini{}
+	if err := ini.LoadFromFile(f); err == nil {
+		t.Error("expected error for closed file")
 	}
 }

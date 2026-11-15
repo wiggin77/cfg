@@ -54,6 +54,8 @@ func TestParseMilliseconds(t *testing.T) {
 		{"bad3", args{"27px"}, 0, true},
 		{"bad4", args{""}, 0, true},
 		{"bad5", args{"27..1 years"}, 0, true},
+		{"overflow", args{"1000000000000 years"}, 0, true},
+		{"overflow_neg", args{"-1000000000000 years"}, 0, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

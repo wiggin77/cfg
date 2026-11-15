@@ -97,3 +97,84 @@ func TestSrcFileFromHandleReloadsAfterEdit(t *testing.T) {
 	writeConf(t, file, "name = two\n", start.Add(time.Minute))
 	assertProp(t, sf, "name", "two")
 }
+
+func TestSrcFileFromFilespecMissing(t *testing.T) {
+	if _, err := NewSrcFileFromFilespec(filepath.Join(t.TempDir(), "missing.conf")); err == nil {
+		t.Error("expected error for missing file")
+	}
+}
+
+func TestSrcFileInvalidContent(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "test.conf")
+	start := time.Now().Add(-time.Hour)
+	writeConf(t, file, "not a property\n", start)
+
+	if _, err := NewSrcFileFromFilespec(file); err == nil {
+		t.Error("expected error for invalid content")
+	}
+	f, err := os.Open(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	if _, err := NewSrcFile(f); err == nil {
+		t.Error("expected error for invalid content")
+	}
+}
+
+func TestSrcFileReloadInvalidContent(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "test.conf")
+	start := time.Now().Add(-time.Hour)
+	writeConf(t, file, "name = one\n", start)
+
+	sf, err := NewSrcFileFromFilespec(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	writeConf(t, file, "not a property\n", start.Add(time.Minute))
+	if _, err := sf.GetProps(); err == nil {
+		t.Error("expected error reloading invalid content")
+	}
+
+	writeConf(t, file, "name = two\n", start.Add(2*time.Minute))
+	assertProp(t, sf, "name", "two")
+}
+
+func TestSrcFileFromFilespecDeleted(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "test.conf")
+	writeConf(t, file, "name = one\n", time.Now())
+
+	sf, err := NewSrcFileFromFilespec(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(file); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := sf.GetProps(); err == nil {
+		t.Error("expected error for deleted file")
+	}
+}
+
+func TestSrcFileFromHandleClosed(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "test.conf")
+	writeConf(t, file, "name = one\n", time.Now())
+
+	f, err := os.Open(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sf, err := NewSrcFile(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	if _, err := sf.GetProps(); err == nil {
+		t.Error("expected error for closed file")
+	}
+	if _, err := NewSrcFile(f); err == nil {
+		t.Error("expected error creating SrcFile from closed file")
+	}
+}
