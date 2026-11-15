@@ -25,6 +25,7 @@ func (ini *Ini) LoadFromFilespec(filespec string) error {
 	if err != nil {
 		return err
 	}
+	defer f.Close()
 	return ini.LoadFromFile(f)
 }
 
